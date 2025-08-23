@@ -64,13 +64,16 @@ def setup_agent_loggers(level: int) -> None:
     
     agent_loggers = [
         'agents.agent_ian',
+        'agents.enhanced_agent_ian',
         'agents.agent_pete', 
         'agents.agent_ron',
         'agents.agent_dave',
         'communication.slack_client',
         'workflows.workflow_engine',
         'workflows.story_breakdown',
-        'taiga.client',
+        'jira.client',
+        'ai.context_analyzer',
+        'ai.openai_client',
     ]
     
     for logger_name in agent_loggers:
@@ -84,7 +87,7 @@ def setup_agent_loggers(level: int) -> None:
             logger.addFilter(EmojiLogFilter('💬'))
         elif 'workflow' in logger_name:
             logger.addFilter(EmojiLogFilter('🔄'))
-        elif 'taiga' in logger_name:
+        elif 'jira' in logger_name:
             logger.addFilter(EmojiLogFilter('📋'))
 
 
