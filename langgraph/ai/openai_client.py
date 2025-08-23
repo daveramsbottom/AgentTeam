@@ -15,7 +15,25 @@ class AgentIanAI:
     def __init__(self, api_key: str):
         """Initialize OpenAI client"""
         self.client = OpenAI(api_key=api_key)
+        self.ai_enabled = True
+        self.consecutive_failures = 0
+        self.max_failures_before_disable = 3
         logger.info("🤖 AgentIan AI initialized with OpenAI integration")
+    
+    def _handle_ai_failure(self, operation: str):
+        """Handle AI operation failure and disable if too many failures"""
+        self.consecutive_failures += 1
+        if self.consecutive_failures >= self.max_failures_before_disable:
+            self.ai_enabled = False
+            logger.warning(f"🔴 AI disabled after {self.consecutive_failures} consecutive failures in {operation}")
+            logger.info("💡 Enhanced AgentIan will continue using rule-based fallbacks")
+    
+    def _handle_ai_success(self):
+        """Handle successful AI operation"""
+        if self.consecutive_failures > 0:
+            logger.info(f"🟢 AI recovered after {self.consecutive_failures} failures")
+        self.consecutive_failures = 0
+        self.ai_enabled = True
     
     def improve_text_with_ai(self, text: str) -> Dict[str, Any]:
         """
@@ -24,39 +42,49 @@ class AgentIanAI:
         Returns:
             Dict with improved text and analysis
         """
+        # Skip AI improvement for very short text or if AI is disabled
+        if len(text.strip()) < 10 or not self.ai_enabled:
+            return {
+                'original_text': text,
+                'corrected_text': text,
+                'changes_made': [],
+                'has_corrections': False,
+                'notes': 'Text too short for AI improvement' if len(text.strip()) < 10 else 'AI temporarily disabled'
+            }
+        
         try:
-            prompt = f"""
-            Please review the following text for spelling, grammar, and clarity improvements:
+            prompt = f"""Review this text and improve spelling, grammar, and clarity. Respond ONLY with valid JSON in this exact format:
 
-            "{text}"
+{{"original_text": "{text}", "improved_text": "your improved version", "changes_made": ["list any significant changes"], "has_improvements": false, "notes": "brief explanation"}}
 
-            Please provide:
-            1. Corrected text with proper spelling and grammar
-            2. List any significant changes made
-            3. Whether any improvements were needed
+Text to review: "{text}"
 
-            Format as JSON:
-            {{
-                "original_text": "{text}",
-                "improved_text": "corrected version",
-                "changes_made": ["list of changes"],
-                "has_improvements": true/false,
-                "notes": "brief explanation if needed"
-            }}
-            """
+Remember: Respond only with the JSON object, no other text."""
 
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant that improves text quality by fixing spelling, grammar, and clarity issues."},
+                    {"role": "system", "content": "You are a text improvement assistant. Always respond with valid JSON only, no other text or formatting."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                max_tokens=500
+                temperature=0.1,
+                max_tokens=300
             )
             
+            response_text = response.choices[0].message.content.strip()
+            logger.debug(f"AI text improvement response: {response_text[:100]}...")
+            
+            # Handle cases where response might have markdown formatting
+            if response_text.startswith('```json'):
+                response_text = response_text.replace('```json', '').replace('```', '').strip()
+            elif response_text.startswith('```'):
+                response_text = response_text.replace('```', '').strip()
+            
             import json
-            result = json.loads(response.choices[0].message.content)
+            result = json.loads(response_text)
+            
+            # Success - reset failure counter
+            self._handle_ai_success()
             
             return {
                 'original_text': text,
@@ -66,53 +94,75 @@ class AgentIanAI:
                 'notes': result.get('notes', '')
             }
             
+        except json.JSONDecodeError as e:
+            self._handle_ai_failure("text_improvement")
+            logger.warning(f"AI text improvement failed - invalid JSON: {e}")
+            logger.debug(f"Response was: {response.choices[0].message.content if 'response' in locals() else 'No response'}")
+            return {
+                'original_text': text,
+                'corrected_text': text,
+                'changes_made': [],
+                'has_corrections': False,
+                'notes': 'AI improvement unavailable - JSON parse error'
+            }
         except Exception as e:
+            self._handle_ai_failure("text_improvement") 
             logger.warning(f"AI text improvement failed: {e}")
             return {
                 'original_text': text,
                 'corrected_text': text,
                 'changes_made': [],
                 'has_corrections': False,
-                'notes': 'Text improvement unavailable'
+                'notes': 'AI improvement unavailable'
             }
     
     def analyze_project_goal(self, project_goal: str) -> Dict[str, Any]:
         """
         Use AI to analyze a project goal and generate intelligent clarification questions
         """
+        if not self.ai_enabled:
+            logger.info("AI disabled, using fallback questions")
+            return {
+                'success': False,
+                'error': 'AI temporarily disabled',
+                'fallback_questions': self._generate_fallback_questions(project_goal)
+            }
+        
         try:
-            prompt = f"""
-            As AgentIan, a Product Owner AI, analyze this project goal and generate intelligent clarification questions.
+            prompt = f"""Analyze this project goal and respond ONLY with valid JSON in this exact format:
 
-            Project Goal: "{project_goal}"
+{{"analysis": "brief project analysis", "questions": ["question 1", "question 2", "question 3"], "technical_considerations": ["consideration 1", "consideration 2"], "suggested_project_type": "web app", "estimated_complexity": "medium"}}
 
-            Please provide:
-            1. A brief analysis of the project complexity and scope
-            2. 3-4 specific, insightful clarification questions that would help create better user stories
-            3. Identify any potential technical challenges or considerations
-            4. Suggest the project type (web app, mobile app, API, etc.)
+Project Goal: "{project_goal}"
 
-            Format your response as JSON with these keys:
-            - "analysis": string with project analysis
-            - "questions": array of clarification questions
-            - "technical_considerations": array of technical points to consider
-            - "suggested_project_type": string
-            - "estimated_complexity": "low" | "medium" | "high"
-            """
+Provide 3-4 insightful questions that would help create better user stories. Focus on what's most important to understand about this specific project.
+
+Remember: Respond only with the JSON object, no other text."""
 
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are AgentIan, an expert Product Owner AI specializing in software project analysis and user story creation."},
+                    {"role": "system", "content": "You are AgentIan, a Product Owner AI. Always respond with valid JSON only, no other text."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=1000
+                temperature=0.5,
+                max_tokens=800
             )
             
-            # Parse the JSON response
+            response_text = response.choices[0].message.content.strip()
+            logger.debug(f"AI project analysis response: {response_text[:100]}...")
+            
+            # Handle markdown formatting
+            if response_text.startswith('```json'):
+                response_text = response_text.replace('```json', '').replace('```', '').strip()
+            elif response_text.startswith('```'):
+                response_text = response_text.replace('```', '').strip()
+            
             import json
-            ai_analysis = json.loads(response.choices[0].message.content)
+            ai_analysis = json.loads(response_text)
+            
+            # Success - reset failure counter
+            self._handle_ai_success()
             
             logger.info("✅ AI project analysis completed")
             return {
@@ -120,9 +170,18 @@ class AgentIanAI:
                 'analysis': ai_analysis
             }
             
+        except json.JSONDecodeError as e:
+            self._handle_ai_failure("project_analysis")
+            logger.warning(f"AI project analysis failed - invalid JSON: {e}")
+            logger.debug(f"Response was: {response.choices[0].message.content if 'response' in locals() else 'No response'}")
+            return {
+                'success': False,
+                'error': f'JSON parse error: {e}',
+                'fallback_questions': self._generate_fallback_questions(project_goal)
+            }
         except Exception as e:
+            self._handle_ai_failure("project_analysis")
             logger.error(f"AI project analysis failed: {e}")
-            # Fallback to basic analysis
             return {
                 'success': False,
                 'error': str(e),

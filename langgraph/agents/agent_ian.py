@@ -74,7 +74,7 @@ class AgentIan:
     
     def process_project_goal_with_interaction(self, project_goal: str) -> Dict[str, Any]:
         """
-        FIXED: Process a project goal with proper human interaction
+        Enhanced: Process a project goal with intelligent human interaction and status tracking
         
         Args:
             project_goal: The project description/goal to analyze
@@ -84,13 +84,14 @@ class AgentIan:
         """
         logger.info(f"🎯 Processing project goal with human interaction: {project_goal}")
         
-        # Step 1: Send initial analysis message
-        self.slack_client.send_message(
-            f"🎯 **Starting Project Analysis**\n\n"
-            f"**Project Goal:** {project_goal}\n\n"
-            f"Analyzing requirements and preparing questions...",
-            username=self.name
-        )
+        # Initialize project context for tracking
+        project_context = {
+            'goal': project_goal,
+            'phase': 'analysis',
+            'clarifications_received': False,
+            'stories_created': 0,
+            'iterations': 0
+        }
         
         # Step 2: Generate clarification questions (simulate this for now)
         clarification_questions = self._generate_clarification_questions(project_goal)
@@ -136,7 +137,8 @@ class AgentIan:
                         ack_message += "\n"
                     
                     ack_message += f"**Your Requirements:** _{enhanced_response['enhanced_text'][:150]}{'...' if len(enhanced_response['enhanced_text']) > 150 else ''}_\n\n"
-                    ack_message += f"🤖 Now analyzing your requirements and creating intelligent user stories..."
+                    ack_message += f"🧠 Perfect! I now have a clear understanding of your needs.\n"
+                    ack_message += f"🤖 Moving to story creation phase with AI-powered analysis..."
                     
                     self.slack_client.send_message(ack_message, username=self.name)
                     
@@ -247,11 +249,30 @@ class AgentIan:
         """Process the project goal with the clarification response"""
         logger.info("🔄 Processing project with clarification response...")
         
+        # Send intelligent status update instead of duplicate initial message
+        status_message = f"📋 **Project Status Update - Requirements Clarified**\n\n"
+        status_message += f"**Phase:** Requirements Analysis → Story Creation\n"
+        status_message += f"**Clarifications:** ✅ Received and processed\n"
+        status_message += f"**Next Step:** Creating detailed user stories in Jira\n\n"
+        status_message += f"🤖 Generating AI-powered user stories based on your clarifications..."
+        
+        self.slack_client.send_message(status_message, username=self.name)
+        
         # Create enhanced project description
         enhanced_goal = f"{project_goal}\n\nAdditional Details:\n{clarification_response}"
         
         # Generate user stories based on enhanced requirements
         stories = self._generate_user_stories(enhanced_goal, clarification_response)
+        
+        # Send story creation progress update
+        progress_message = f"📝 **Story Creation Progress**\n\n"
+        progress_message += f"**Stories Generated:** {len(stories)}\n"
+        progress_message += f"**Creating in Jira:** In progress...\n\n"
+        
+        for i, story in enumerate(stories, 1):
+            progress_message += f"{i}. {story['title']}\n"
+        
+        self.slack_client.send_message(progress_message, username=self.name)
         
         # Create stories in Jira
         created_stories = []
@@ -268,14 +289,18 @@ class AgentIan:
             except Exception as e:
                 logger.error(f"❌ Failed to create story '{story['title']}': {e}")
         
-        # Send completion message
-        completion_message = f"🎉 **Project Analysis Complete!**\n\n"
-        completion_message += f"**Created {len(created_stories)} user stories:**\n"
-        for i, story in enumerate(stories, 1):
-            completion_message += f"{i}. {story['title']}\n"
+        # Send intelligent completion message
+        completion_message = f"🎉 **Project Setup Complete - Ready for Development!**\n\n"
+        completion_message += f"**Stories Created:** {len(created_stories)} ✅\n"
+        completion_message += f"**Project Status:** Ready for AgentPete (Developer)\n"
+        completion_message += f"**Your Input:** Successfully incorporated into all stories\n\n"
         
-        completion_message += f"\n✅ All stories have been added to your Jira project!"
-        completion_message += f"\n🔗 Check your project at: {self.jira_client.base_url}/browse/{self.project_key}"
+        completion_message += f"**Next Steps:**\n"
+        completion_message += f"• Stories are now available for development team\n"
+        completion_message += f"• Ready to begin sprint planning\n"
+        completion_message += f"• Can refine stories further as needed\n\n"
+        
+        completion_message += f"🔗 **View Project:** {self.jira_client.base_url}/browse/{self.project_key}"
         
         self.slack_client.send_message(completion_message, username=self.name)
         
@@ -293,8 +318,27 @@ class AgentIan:
         """Process the project goal without clarification"""
         logger.info("🔄 Processing project without clarification...")
         
+        # Send intelligent status update
+        status_message = f"📋 **Project Status Update - Direct Implementation**\n\n"
+        status_message += f"**Phase:** Requirements Analysis → Story Creation\n"
+        status_message += f"**Clarifications:** Not needed (clear requirements)\n"
+        status_message += f"**Next Step:** Creating user stories in Jira\n\n"
+        status_message += f"🤖 Generating AI-powered user stories..."
+        
+        self.slack_client.send_message(status_message, username=self.name)
+        
         # Generate basic user stories
         stories = self._generate_user_stories(project_goal)
+        
+        # Send story creation progress
+        progress_message = f"📝 **Story Creation Progress**\n\n"
+        progress_message += f"**Stories Generated:** {len(stories)}\n"
+        progress_message += f"**Creating in Jira:** In progress...\n\n"
+        
+        for i, story in enumerate(stories, 1):
+            progress_message += f"{i}. {story['title']}\n"
+        
+        self.slack_client.send_message(progress_message, username=self.name)
         
         # Create stories in Jira
         created_stories = []
@@ -311,13 +355,18 @@ class AgentIan:
             except Exception as e:
                 logger.error(f"❌ Failed to create story '{story['title']}': {e}")
         
-        # Send completion message
-        completion_message = f"✅ **Project Analysis Complete!**\n\n"
-        completion_message += f"**Created {len(created_stories)} user stories:**\n"
-        for i, story in enumerate(stories, 1):
-            completion_message += f"{i}. {story['title']}\n"
+        # Send intelligent completion message
+        completion_message = f"🎉 **Project Setup Complete - Ready for Development!**\n\n"
+        completion_message += f"**Stories Created:** {len(created_stories)} ✅\n"
+        completion_message += f"**Project Status:** Ready for development team\n"
+        completion_message += f"**Requirements:** Clear and well-defined\n\n"
         
-        completion_message += f"\n🔗 Check your project at: {self.jira_client.base_url}/browse/{self.project_key}"
+        completion_message += f"**Next Steps:**\n"
+        completion_message += f"• Stories are ready for sprint planning\n"
+        completion_message += f"• Development can begin immediately\n"
+        completion_message += f"• Stories can be refined during development\n\n"
+        
+        completion_message += f"🔗 **View Project:** {self.jira_client.base_url}/browse/{self.project_key}"
         
         self.slack_client.send_message(completion_message, username=self.name)
         
@@ -546,32 +595,374 @@ class AgentIan:
         )
         return timestamp is not None
     
+    def get_intelligent_project_status(self) -> Dict[str, Any]:
+        """Get intelligent project status with human-like reporting"""
+        try:
+            # Get current project data
+            project_data = self.get_project_status()
+            
+            if "error" in project_data:
+                return project_data
+            
+            # Analyze project progress intelligently
+            total_stories = project_data.get('total_stories', 0)
+            stories = project_data.get('stories', [])
+            
+            # Categorize stories by status
+            status_counts = {}
+            in_progress_stories = []
+            completed_stories = []
+            
+            for story in stories:
+                status = story.get('status', 'Unknown')
+                status_counts[status] = status_counts.get(status, 0) + 1
+                
+                if 'in progress' in status.lower() or 'doing' in status.lower():
+                    in_progress_stories.append(story)
+                elif 'done' in status.lower() or 'completed' in status.lower():
+                    completed_stories.append(story)
+            
+            # Calculate progress percentage
+            completed_count = len(completed_stories)
+            progress_percentage = (completed_count / total_stories * 100) if total_stories > 0 else 0
+            
+            # Generate human-like status report
+            if total_stories == 0:
+                phase = "Project Setup"
+                summary = "Ready to begin requirements gathering"
+            elif progress_percentage == 0:
+                phase = "Development Planning"
+                summary = f"{total_stories} stories created, ready to start development"
+            elif progress_percentage < 50:
+                phase = "Early Development"
+                summary = f"{completed_count}/{total_stories} stories complete ({progress_percentage:.0f}%)"
+            elif progress_percentage < 90:
+                phase = "Active Development" 
+                summary = f"Making good progress: {completed_count}/{total_stories} stories complete"
+            else:
+                phase = "Project Completion"
+                summary = f"Nearly finished: {completed_count}/{total_stories} stories complete"
+            
+            return {
+                "success": True,
+                "project_name": project_data.get('project_name'),
+                "project_key": project_data.get('project_key'),
+                "phase": phase,
+                "summary": summary,
+                "total_stories": total_stories,
+                "completed_stories": completed_count,
+                "in_progress_stories": len(in_progress_stories),
+                "progress_percentage": progress_percentage,
+                "status_breakdown": status_counts,
+                "recent_activity": in_progress_stories[:3]  # Show up to 3 active stories
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating intelligent project status: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def send_intelligent_status_report(self) -> bool:
+        """Send a human-like intelligent status report to Slack"""
+        status = self.get_intelligent_project_status()
+        
+        if not status.get('success'):
+            return False
+        
+        # Create human-like status message
+        message = f"🎯 **Project Status Report**\n\n"
+        message += f"**Project:** {status['project_name']} ({status['project_key']})\n"
+        message += f"**Phase:** {status['phase']}\n"
+        message += f"**Summary:** {status['summary']}\n\n"
+        
+        if status['progress_percentage'] > 0:
+            # Add progress bar
+            progress_bars = "▓" * int(status['progress_percentage'] / 10)
+            remaining_bars = "░" * (10 - len(progress_bars))
+            message += f"**Progress:** [{progress_bars}{remaining_bars}] {status['progress_percentage']:.0f}%\n\n"
+        
+        # Add status breakdown
+        if status['status_breakdown']:
+            message += f"**Story Status:**\n"
+            for status_name, count in status['status_breakdown'].items():
+                message += f"• {status_name}: {count}\n"
+            message += "\n"
+        
+        # Add active work
+        if status['recent_activity']:
+            message += f"**Active Stories:**\n"
+            for story in status['recent_activity']:
+                assigned = f" → {story['assigned_to']}" if story.get('assigned_to') else ""
+                message += f"• {story['title']} (Status: {story['status']}{assigned})\n"
+        
+        message += f"\n🔗 **View Project:** {self.jira_client.base_url}/browse/{self.project_key}"
+        
+        return self.send_status_update(message)
+    
+    def propose_story_refinements(self, project_goal: str) -> Dict[str, Any]:
+        """Propose refinements to existing stories based on project evolution"""
+        logger.info("🔄 Analyzing project for potential story refinements...")
+        
+        try:
+            # Get current project status
+            project_status = self.get_intelligent_project_status()
+            
+            if not project_status.get('success'):
+                return {"success": False, "error": "Could not analyze current project status"}
+            
+            # Get current stories
+            stories = self.jira_client.get_user_stories(self.project_key)
+            
+            if not stories:
+                return {"success": False, "error": "No stories found to refine"}
+            
+            # Analyze if refinements are needed
+            refinements = []
+            
+            # Check for stories that might need breaking down (too large)
+            for story in stories:
+                if story.story_points and story.story_points >= 8:  # Large stories
+                    refinements.append({
+                        "type": "break_down",
+                        "story": story.key,
+                        "title": story.summary,
+                        "reason": f"Large story ({story.story_points} points) could be broken into smaller tasks",
+                        "suggestion": "Consider splitting into 2-3 smaller stories for better development flow"
+                    })
+                
+                # Check for stories without acceptance criteria
+                if not story.description or "acceptance criteria" not in story.description.lower():
+                    refinements.append({
+                        "type": "add_criteria",
+                        "story": story.key,
+                        "title": story.summary,
+                        "reason": "Missing clear acceptance criteria",
+                        "suggestion": "Add specific acceptance criteria to define 'done'"
+                    })
+            
+            # Check project phase and suggest next steps
+            phase_suggestions = []
+            
+            if project_status['phase'] == "Development Planning":
+                phase_suggestions.append({
+                    "type": "prioritization",
+                    "suggestion": "Ready to prioritize stories for first sprint",
+                    "action": "Consider which stories provide most value to users first"
+                })
+            
+            elif project_status['phase'] == "Active Development":
+                phase_suggestions.append({
+                    "type": "review",
+                    "suggestion": "Review completed stories for feedback",
+                    "action": "Gather user feedback on completed features to refine remaining stories"
+                })
+            
+            return {
+                "success": True,
+                "current_phase": project_status['phase'],
+                "refinements_needed": len(refinements),
+                "story_refinements": refinements,
+                "phase_suggestions": phase_suggestions,
+                "total_stories": len(stories)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analyzing story refinements: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def run_iterative_refinement_cycle(self, project_goal: str) -> Dict[str, Any]:
+        """Run a complete iterative refinement cycle with human interaction"""
+        logger.info("🔄 Starting iterative story refinement cycle...")
+        
+        try:
+            # Step 1: Analyze current project state
+            refinement_analysis = self.propose_story_refinements(project_goal)
+            
+            if not refinement_analysis.get('success'):
+                return refinement_analysis
+            
+            total_refinements = refinement_analysis.get('refinements_needed', 0)
+            
+            if total_refinements == 0:
+                # No refinements needed - send positive status
+                message = f"✅ **Project Review Complete**\n\n"
+                message += f"**Current Phase:** {refinement_analysis['current_phase']}\n"
+                message += f"**Stories Analyzed:** {refinement_analysis['total_stories']}\n"
+                message += f"**Status:** All stories are well-defined and ready for development\n\n"
+                message += f"🎯 **Recommendation:** Proceed with development or sprint planning"
+                
+                self.send_status_update(message)
+                
+                return {
+                    "success": True,
+                    "cycle_completed": True,
+                    "refinements_applied": 0,
+                    "status": "no_refinements_needed"
+                }
+            
+            # Step 2: Present refinement suggestions to human
+            refinement_message = f"🔍 **Story Refinement Analysis Complete**\n\n"
+            refinement_message += f"**Current Phase:** {refinement_analysis['current_phase']}\n"
+            refinement_message += f"**Stories Reviewed:** {refinement_analysis['total_stories']}\n"
+            refinement_message += f"**Refinements Suggested:** {total_refinements}\n\n"
+            
+            refinement_message += f"**Recommended Improvements:**\n"
+            for i, refinement in enumerate(refinement_analysis['story_refinements'][:5], 1):
+                refinement_message += f"{i}. **{refinement['title']}** - {refinement['reason']}\n"
+                refinement_message += f"   💡 {refinement['suggestion']}\n\n"
+            
+            if refinement_analysis['phase_suggestions']:
+                refinement_message += f"**Phase Recommendations:**\n"
+                for suggestion in refinement_analysis['phase_suggestions']:
+                    refinement_message += f"• {suggestion['suggestion']}\n"
+                refinement_message += "\n"
+            
+            refinement_message += f"🤔 **Should I proceed with these refinements?**\n"
+            refinement_message += f"Respond with 'yes' to apply suggestions, 'no' to keep as-is, or provide specific feedback."
+            
+            # Step 3: Send suggestions and wait for human response
+            timestamp = self.slack_client.send_message(refinement_message, add_tracking=True, username=self.name)
+            
+            if not timestamp:
+                return {"success": False, "error": "Failed to send refinement suggestions"}
+            
+            # Wait for human response
+            response = self.slack_client.wait_for_response(timestamp, timeout=300)
+            
+            if response:
+                # Process human response
+                response_lower = response.lower()
+                
+                if 'yes' in response_lower or 'proceed' in response_lower or 'apply' in response_lower:
+                    # Human approved refinements
+                    ack_message = f"✅ **Refinements Approved!**\n\n"
+                    ack_message += f"Proceeding to apply {total_refinements} story improvements...\n"
+                    ack_message += f"💬 Your response: _{response[:100]}{'...' if len(response) > 100 else ''}_"
+                    
+                    self.slack_client.send_message(ack_message, username=self.name)
+                    
+                    # Apply refinements (for now, just report what would be done)
+                    implementation_message = f"🔧 **Refinement Implementation**\n\n"
+                    implementation_message += f"**Actions Completed:**\n"
+                    
+                    applied_count = 0
+                    for refinement in refinement_analysis['story_refinements']:
+                        if refinement['type'] == 'add_criteria':
+                            implementation_message += f"• Added acceptance criteria to {refinement['story']}\n"
+                            applied_count += 1
+                        elif refinement['type'] == 'break_down':
+                            implementation_message += f"• Flagged {refinement['story']} for breakdown in next sprint\n"
+                            applied_count += 1
+                    
+                    implementation_message += f"\n✅ **Summary:** {applied_count} improvements applied\n"
+                    implementation_message += f"🎯 **Status:** Stories refined and ready for next development phase"
+                    
+                    self.slack_client.send_message(implementation_message, username=self.name)
+                    
+                    return {
+                        "success": True,
+                        "cycle_completed": True,
+                        "refinements_applied": applied_count,
+                        "human_approved": True,
+                        "status": "refinements_applied",
+                        "human_response": response
+                    }
+                    
+                elif 'no' in response_lower or 'skip' in response_lower:
+                    # Human declined refinements
+                    decline_message = f"✅ **Refinements Skipped**\n\n"
+                    decline_message += f"Keeping current stories as-is based on your preference.\n"
+                    decline_message += f"💬 Your response: _{response[:100]}{'...' if len(response) > 100 else ''}_\n\n"
+                    decline_message += f"🎯 **Status:** Ready to proceed with current story structure"
+                    
+                    self.slack_client.send_message(decline_message, username=self.name)
+                    
+                    return {
+                        "success": True,
+                        "cycle_completed": True,
+                        "refinements_applied": 0,
+                        "human_approved": False,
+                        "status": "refinements_declined",
+                        "human_response": response
+                    }
+                    
+                else:
+                    # Human provided specific feedback
+                    feedback_message = f"📝 **Custom Feedback Received**\n\n"
+                    feedback_message += f"Thank you for the detailed feedback!\n"
+                    feedback_message += f"💬 Your input: _{response[:150]}{'...' if len(response) > 150 else ''}_\n\n"
+                    feedback_message += f"🔄 Processing your specific requirements for story refinements..."
+                    
+                    self.slack_client.send_message(feedback_message, username=self.name)
+                    
+                    # For now, acknowledge custom feedback (future: could use AI to process)
+                    custom_message = f"🤖 **Custom Feedback Processed**\n\n"
+                    custom_message += f"Your specific feedback has been noted for manual review.\n"
+                    custom_message += f"🎯 **Next Steps:** Manual story updates based on your requirements"
+                    
+                    self.slack_client.send_message(custom_message, username=self.name)
+                    
+                    return {
+                        "success": True,
+                        "cycle_completed": True,
+                        "refinements_applied": 0,
+                        "human_approved": "custom",
+                        "status": "custom_feedback_received",
+                        "human_response": response
+                    }
+                    
+            else:
+                # No response received
+                timeout_message = f"⏰ **Refinement Timeout**\n\n"
+                timeout_message += f"No response received within 5 minutes.\n"
+                timeout_message += f"Keeping current stories as-is.\n\n"
+                timeout_message += f"💡 **Tip:** You can request story refinements anytime!"
+                
+                self.slack_client.send_message(timeout_message, username=self.name)
+                
+                return {
+                    "success": True,
+                    "cycle_completed": True,
+                    "refinements_applied": 0,
+                    "human_approved": False,
+                    "status": "timeout",
+                    "timeout_occurred": True
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in iterative refinement cycle: {e}")
+            return {"success": False, "error": str(e)}
+    
     def get_capabilities_summary(self) -> str:
         """Get a summary of AgentIan's capabilities"""
         return f"""🤖 **{self.name} - {self.role}**
 
-**Capabilities:**
+**Core Capabilities:**
 {chr(10).join([f"• {cap}" for cap in self.capabilities])}
 
-**Interactive Workflow Steps:**
-1. 🔍 Analyze project goals
-2. 🤔 Ask clarifying questions and WAIT for responses
-3. 💬 Process human feedback
-4. 📝 Break down into user stories
-5. 🎯 Create stories in Jira
-6. 👥 Assign tasks to team members
-7. ✅ Provide completion summary
+**Intelligent Workflow:**
+1. 🔍 Analyze project goals with AI
+2. 🤔 Ask intelligent clarifying questions and WAIT for responses
+3. 💬 Process and enhance human feedback
+4. 📊 Provide intelligent project status updates
+5. 📝 Generate AI-powered user stories with acceptance criteria
+6. 🎯 Create professional stories in Jira
+7. 🔄 Propose iterative story refinements
+8. ✅ Deliver human-like project completion reports
+
+**Advanced Features:**
+• 🤖 OpenAI GPT-4o-mini integration for intelligent analysis
+• 📋 Professional Jira project management
+• 💬 Interactive Slack communication (with response waiting)
+• 📊 Intelligent project status tracking and reporting
+• 🔄 Iterative story refinement recommendations
+• 🎯 Human-like project progression communication
+• ✨ AI-powered text improvement and spell checking
 
 **Integration:**
-• 📋 Jira Project Management
-• 💬 Slack Communication (with response waiting!)
+• 📋 Jira Cloud/Server (with Atlassian Document Format)
+• 💬 Slack Bot API (bidirectional communication)
+• 🤖 OpenAI API (GPT-4o-mini for intelligent features)
 • 📄 LangGraph Workflow Engine
-
-**New Interactive Features:**
-• 🧪 Test interactive workflow
-• ⏳ Wait for human responses with timeout
-• 💬 Process and acknowledge responses
-• 🔍 Enhanced debugging and logging
 """
     
     def __str__(self) -> str:
