@@ -172,20 +172,97 @@ def run_full_workflow(config: Config, jira_config: JiraConfig) -> bool:
     # Show AgentIan capabilities
     print(f"\n{agent_ian.get_capabilities_summary()}")
     
-    # Test project goals with INTERACTIVE workflow
+    # Get project goal dynamically from Jira
+    print("\n🎯 Getting Project Goal from Jira...")
+    project_goal = agent_ian.jira_client.get_project_goal(jira_config.default_project_key)
+    
+    # Check if this looks like a default/generic goal or is missing
+    needs_goal_clarification = (
+        not project_goal or 
+        "Work on the" in project_goal or 
+        "Manage tasks and stories" in project_goal or
+        len(project_goal.strip()) < 30
+    )
+    
+    if needs_goal_clarification:
+        print("🤔 **No specific project goal found in Jira!**")
+        print("💬 AgentIan will ask you to define the project goal and store it in Jira...")
+        
+        # Send Slack message asking for project goal
+        goal_request = (
+            f"🎯 **Project Goal Needed - {jira_config.default_project_key}**\n\n"
+            f"I need to understand what this project is about to create relevant user stories.\n\n"
+            f"**Please describe your project goal:**\n"
+            f"• What type of application/system are you building?\n"
+            f"• Who are the main users?\n"
+            f"• What are the key features or objectives?\n\n"
+            f"**Examples:**\n"
+            f"• 'Build a mobile expense tracking app with receipt scanning and budget alerts'\n"
+            f"• 'Create an online marketplace for handmade crafts with seller profiles and reviews'\n"
+            f"• 'Develop a REST API for task management with user authentication and real-time updates'\n\n"
+            f"💬 **Please provide a detailed project description!** I'll wait for your response and store it in Jira for future use."
+        )
+        
+        timestamp = agent_ian.slack_client.send_message(goal_request, add_tracking=True, username=agent_ian.name)
+        
+        if timestamp:
+            print("📤 Sent project goal request to Slack")
+            print("⏳ Waiting for your response (5 minutes timeout)...")
+            
+            # Wait for user response
+            response = agent_ian.slack_client.wait_for_response(timestamp, timeout=300)
+            
+            if response:
+                print(f"✅ Received project goal: {response[:100]}...")
+                
+                # Process response with AI if available
+                if agent_ian.ai_client:
+                    enhanced_response = agent_ian._enhance_human_response(response)
+                    project_goal = enhanced_response['enhanced_text']
+                else:
+                    project_goal = response.strip()
+                
+                # Store the goal in Jira
+                print("💾 Storing project goal in Jira...")
+                success = agent_ian.jira_client.update_project_goal(jira_config.default_project_key, project_goal)
+                
+                if success:
+                    print("✅ Project goal saved to Jira successfully!")
+                    
+                    # Send confirmation
+                    confirmation = (
+                        f"✅ **Project Goal Saved!**\n\n"
+                        f"**Goal:** {project_goal[:200]}{'...' if len(project_goal) > 200 else ''}\n\n"
+                        f"💾 Stored in Jira project description for future use\n"
+                        f"🚀 Now proceeding with intelligent story creation..."
+                    )
+                    agent_ian.slack_client.send_message(confirmation, username=agent_ian.name)
+                else:
+                    print("⚠️ Could not save to Jira, but proceeding with workflow...")
+            else:
+                print("⏰ No response received within 5 minutes")
+                print("💡 Using fallback goal for this session...")
+                project_goal = f"Manage and develop features for the {jira_config.default_project_key} project"
+                
+                # Send timeout message
+                timeout_msg = (
+                    f"⏰ **Goal Request Timeout**\n\n"
+                    f"No project goal received within 5 minutes.\n"
+                    f"Using generic goal for now: '{project_goal}'\n\n"
+                    f"💡 **Tip:** Set a specific goal later with:\n"
+                    f"`python main.py --set-goal \"your project description\"`"
+                )
+                agent_ian.slack_client.send_message(timeout_msg, username=agent_ian.name)
+        else:
+            print("❌ Could not send goal request to Slack")
+            project_goal = f"Manage and develop features for the {jira_config.default_project_key} project"
+    
+    print(f"🎯 **Final Project Goal:** {project_goal}")
+    
+    # Start interactive workflow with the goal (user-defined or from Jira)
     print("\n🎯 Starting AgentIan's INTERACTIVE Workflow...")
     print("💬 IMPORTANT: Watch your Slack channel! AgentIan will ask questions and wait for your responses!")
-    
-    test_goals = [
-        "Build a modern web application for task management with user authentication, real-time collaboration, and mobile-responsive design",
-        "Create a REST API for a blogging platform with posts, comments, user management, and content moderation features", 
-        "Develop a mobile-friendly e-commerce website with product catalog, shopping cart, payment integration, and order tracking"
-    ]
-    
-    # Process the first project goal with INTERACTIVE features
-    project_goal = test_goals[0]
-    print(f"\n🚀 Processing INTERACTIVE project goal: {project_goal}")
-    print("💬 Check your Slack channel for questions! AgentIan will wait for your responses!")
+    print(f"🚀 Processing project goal: {project_goal[:100]}{'...' if len(project_goal) > 100 else ''}")
     
     # Send intelligent initial notification
     agent_ian.send_status_update(
@@ -399,6 +476,7 @@ Commands:
   python main.py                        Run legacy interactive workflow
   python main.py --enhanced              Test enhanced AgentIan architecture
   python main.py --enhanced-monitoring   Run continuous monitoring mode (NEW!)
+  python main.py --set-goal "your goal"  Set project goal in Jira description
   python main.py --debug-slack          Debug Slack integration only  
   python main.py --test-interactive     Test interactive response system
   python main.py --help                Show this help message
@@ -406,6 +484,7 @@ Commands:
 🆕 Enhanced Features:
   --enhanced              Test flexible state machine + intelligent analysis
   --enhanced-monitoring   Continuous event-driven operation (recommended!)
+  --set-goal             Set project goal directly in Jira project description
 
 Environment Variables Required:
   OPENAI_API_KEY         OpenAI API key for intelligent analysis
@@ -509,6 +588,47 @@ def main():
                 print("\n✅ Enhanced monitoring completed successfully!")
             else:
                 print("\n❌ Enhanced monitoring encountered errors!")
+            return
+        elif sys.argv[1] == "--set-goal":
+            if len(sys.argv) < 3:
+                print("❌ Please provide a project goal:")
+                print("   python main.py --set-goal \"Build a mobile expense tracking app\"")
+                return
+            
+            # Load configuration
+            try:
+                config = Config.from_environment()
+                jira_config = JiraConfig.from_env()
+            except Exception as e:
+                print(f"❌ Configuration error: {e}")
+                return
+            
+            # Set the project goal
+            from agents.agent_ian import AgentIan
+            agent_ian = AgentIan(
+                jira_config.base_url,
+                jira_config.username,
+                jira_config.api_token,
+                config.slack_token,
+                config.slack_channel,
+                jira_config.default_project_key
+            )
+            
+            if not agent_ian.authenticate():
+                print("❌ Authentication failed")
+                return
+            
+            new_goal = sys.argv[2]
+            print(f"🎯 Setting project goal for {jira_config.default_project_key}...")
+            print(f"Goal: {new_goal}")
+            
+            success = agent_ian.jira_client.update_project_goal(jira_config.default_project_key, new_goal)
+            if success:
+                print("✅ Project goal updated successfully!")
+                print(f"🔗 View project: {jira_config.base_url}/browse/{jira_config.default_project_key}")
+                print("💡 Next: Run 'python main.py --enhanced-monitoring' to use the new goal!")
+            else:
+                print("❌ Failed to update project goal")
             return
     
     # Load configuration for full workflow

@@ -296,6 +296,67 @@ class JiraClient:
             logger.error(f"❌ Error fetching project {project_key}: {e}")
             return None
     
+    def get_project_goal(self, project_key: str) -> Optional[str]:
+        """
+        Extract project goal from Jira project description or name
+        This allows AgentIan to work with different projects dynamically
+        """
+        try:
+            project_details = self.get_project_details(project_key)
+            if not project_details:
+                logger.warning(f"⚠️ Could not get project details for {project_key}")
+                return None
+            
+            # Try to get goal from project description first
+            description = project_details.get('description')
+            if description and len(description.strip()) > 20:
+                logger.info(f"🎯 Found project goal in description: {description[:100]}...")
+                return description.strip()
+            
+            # Fallback to project name if description is empty
+            name = project_details.get('name', '')
+            if name:
+                # Create a basic goal from the project name
+                goal = f"Work on the {name} project"
+                logger.info(f"🎯 Generated basic goal from project name: {goal}")
+                return goal
+            
+            # Final fallback
+            logger.warning(f"⚠️ No suitable project goal found for {project_key}")
+            return f"Manage tasks and stories for project {project_key}"
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting project goal for {project_key}: {e}")
+            return f"Work on project {project_key}"
+    
+    def update_project_goal(self, project_key: str, new_goal: str) -> bool:
+        """
+        Update the project description with a new goal
+        This allows setting project goals directly in Jira
+        """
+        try:
+            # Jira Cloud API for updating project description
+            update_data = {
+                "description": new_goal
+            }
+            
+            response = self.session.put(
+                f"{self.base_url}/rest/api/3/project/{project_key}",
+                json=update_data
+            )
+            response.raise_for_status()
+            
+            # Clear cache so next get_project_details gets fresh data
+            if project_key in self._project_cache:
+                del self._project_cache[project_key]
+            
+            logger.info(f"✅ Updated project goal for {project_key}")
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Error updating project goal for {project_key}: {e}")
+            return False
+    
     def get_issues(self, project_key: str, issue_types: List[str] = None) -> List[JiraIssue]:
         """Get issues for a project, optionally filtered by issue type"""
         logger.info(f"📖 Fetching issues for project {project_key}...")
