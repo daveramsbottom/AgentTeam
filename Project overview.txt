@@ -1,0 +1,58 @@
+Project overview
+
+I am building a showcase of an AI team that can fill roles in a software development team. The goal is to have a team of 5 or 6 agents working on the different roles in a team to build a software product.
+
+Tools chosen
+
+Taiga for the project management
+
+Langgraph for the AI framework
+
+Slack for the agents to ask for clarification and to show a parallel to human teams
+
+All running in docker
+
+All the parts can run and this is the structure
+AgentTeam is the root direcrtory
+./langgraph
+./langgraph/taiga
+./langgraph/taiga/client copy.py
+./langgraph/taiga/client.py
+./langgraph/taiga/__init__.py
+./langgraph/requirements.txt
+./langgraph/dockerfile
+./langgraph/test_slack_integration.py
+./langgraph/workflows
+./langgraph/workflows/workflow_engine.py
+./langgraph/workflows/__init__.py
+./langgraph/workflows/story_breakdown.py
+./langgraph/workflows/states.py
+./langgraph/agents
+./langgraph/agents/__init__.py
+./langgraph/agents/agent_ian.py
+./langgraph/utils
+./langgraph/utils/config.py
+./langgraph/utils/logging_config.py
+./langgraph/utils/__init__.py
+./langgraph/communication
+./langgraph/communication/__init__.py
+./langgraph/communication/slack_client.py
+./langgraph/main.py
+./.env
+./docker-compose.yml
+
+The code has been refactored to separate out parts to make further work simpler
+
+Current status
+AgentIan is a product owner and has the responsibility of taking the project and breakign it down into stories and tasks. It uses Slack to ask for clarification
+Taiga runs and AgentIan seems to be abel to read and update a project
+
+Current Issues 
+AgentIan writes to the slack channel and seems to read the repsonses but doesn't wait for a response. 
+We need to update this code to check for replies to it's message and for now output that reply so we know it's working
+
+This is the main.py and AgentIan.py code
+
+What else do you need to understand the environment?
+
+What I need is an update to make AgentIan wait for a repsonse (from a human for now but later it coudl be a bot) and output the reply so we can make sure it works properly
