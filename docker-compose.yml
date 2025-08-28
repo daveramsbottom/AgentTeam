@@ -28,12 +28,67 @@ services:
     # Run the full interactive workflow
     command: ["python", "main.py"]
 
+  # AgentPete - Developer Agent
+  agentpete:
+    build:
+      context: ./langgraph
+      dockerfile: dockerfile
+    container_name: agentpete
+    restart: unless-stopped
+    environment:
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Jira Configuration
+      JIRA_BASE_URL: ${JIRA_BASE_URL}
+      JIRA_USERNAME: ${JIRA_USERNAME}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN}
+      JIRA_DEFAULT_PROJECT: ${JIRA_DEFAULT_PROJECT:-AT}
+      # Slack Configuration
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_CHANNEL_ID: ${SLACK_CHANNEL_ID}
+      # Application Configuration
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+      WORKFLOW_TIMEOUT: 300
+    volumes:
+      - ./langgraph:/app
+    working_dir: /app
+    # Run AgentPete in continuous monitoring mode
+    command: ["python", "main_pete.py"]
+
   # Development/Testing service
   agentian-dev:
     build:
       context: ./langgraph
       dockerfile: dockerfile
     container_name: agentian-dev
+    environment:
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Jira Configuration
+      JIRA_BASE_URL: ${JIRA_BASE_URL}
+      JIRA_USERNAME: ${JIRA_USERNAME}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN}
+      JIRA_DEFAULT_PROJECT: ${JIRA_DEFAULT_PROJECT:-AT}
+      # Slack Configuration
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_CHANNEL_ID: ${SLACK_CHANNEL_ID}
+      # Application Configuration
+      PYTHONPATH: /app
+      LOG_LEVEL: DEBUG
+      WORKFLOW_TIMEOUT: 300
+    volumes:
+      - ./langgraph:/app
+    working_dir: /app
+    # Keep container running for development
+    command: tail -f /dev/null
+
+  # AgentPete Development/Testing service
+  agentpete-dev:
+    build:
+      context: ./langgraph
+      dockerfile: dockerfile
+    container_name: agentpete-dev
     environment:
       # OpenAI Configuration
       OPENAI_API_KEY: ${OPENAI_API_KEY}
