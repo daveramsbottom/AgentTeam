@@ -234,30 +234,135 @@ AgentTeam/
 
 ### Environment Configuration
 
-Required environment variables:
+The system supports both **single-agent** (legacy) and **multi-agent** configurations:
+
+#### Multi-Agent Configuration (Recommended)
+
+The multi-agent system supports a **Manager Agent** that coordinates specialized agents with separate identities:
+
+```bash
+# =============================================================================
+# SHARED CONFIGURATION
+# =============================================================================
+
+# OpenAI Configuration (shared across all agents)
+OPENAI_API_KEY=your_openai_key
+
+# Global Jira Configuration  
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+
+# Default communication channel
+DEFAULT_SLACK_CHANNEL_ID=C-your-channel-id
+
+# =============================================================================
+# MANAGER AGENT (Coordinates and creates other agents)
+# =============================================================================
+
+MANAGER_AGENT_NAME=AgentManager
+MANAGER_SLACK_BOT_TOKEN=xoxb-manager-token
+MANAGER_SLACK_CHANNEL_ID=C-your-channel-id
+MANAGER_JIRA_USERNAME=agentmanager@company.com
+MANAGER_JIRA_API_TOKEN=your-manager-jira-token
+MANAGER_JIRA_DEFAULT_PROJECT=PROJ
+
+# =============================================================================
+# SPECIALIZED AGENTS (Each with separate identities)
+# =============================================================================
+
+# Product Owner Agent (AgentIan)
+PRODUCT_OWNER_AGENT_NAME=AgentIan
+PRODUCT_OWNER_SLACK_BOT_TOKEN=xoxb-product-owner-token
+PRODUCT_OWNER_SLACK_CHANNEL_ID=C-your-channel-id
+PRODUCT_OWNER_JIRA_USERNAME=agentian@company.com
+PRODUCT_OWNER_JIRA_API_TOKEN=your-product-owner-jira-token
+PRODUCT_OWNER_JIRA_DEFAULT_PROJECT=PROJ
+
+# Developer Agent (AgentPete) 
+DEVELOPER_AGENT_NAME=AgentPete
+DEVELOPER_SLACK_BOT_TOKEN=xoxb-developer-token
+DEVELOPER_SLACK_CHANNEL_ID=C-your-channel-id
+DEVELOPER_JIRA_USERNAME=agentpete@company.com
+DEVELOPER_JIRA_API_TOKEN=your-developer-jira-token
+DEVELOPER_JIRA_DEFAULT_PROJECT=PROJ
+
+# Tester Agent (AgentSarah)
+TESTER_AGENT_NAME=AgentSarah
+TESTER_SLACK_BOT_TOKEN=xoxb-tester-token
+TESTER_SLACK_CHANNEL_ID=C-your-channel-id
+TESTER_JIRA_USERNAME=agentsarah@company.com
+TESTER_JIRA_API_TOKEN=your-tester-jira-token
+TESTER_JIRA_DEFAULT_PROJECT=PROJ
+
+# DevOps Agent (AgentMike)
+DEVOPS_AGENT_NAME=AgentMike
+DEVOPS_SLACK_BOT_TOKEN=xoxb-devops-token
+DEVOPS_SLACK_CHANNEL_ID=C-your-channel-id
+DEVOPS_JIRA_USERNAME=agentmike@company.com
+DEVOPS_JIRA_API_TOKEN=your-devops-jira-token
+DEVOPS_JIRA_DEFAULT_PROJECT=PROJ
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+
+# Maximum active agents
+MAX_ACTIVE_AGENTS=5
+
+# Timeouts (seconds)
+AGENT_CREATION_TIMEOUT=300
+INTER_AGENT_TIMEOUT=120
+PROJECT_COORDINATION_CHANNEL_ID=C-your-coordination-channel
+```
+
+#### Legacy Single-Agent Configuration (Backward Compatible)
+
 ```bash
 # Core Configuration
-OPENAI_API_KEY=your_openai_key               # For future LLM integration
-SLACK_BOT_TOKEN=xoxb-your-bot-token          # Slack bot token
-SLACK_CHANNEL_ID=C-your-channel-id           # Target Slack channel
+OPENAI_API_KEY=your_openai_key
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+SLACK_CHANNEL_ID=C-your-channel-id
 
-# Jira Configuration (Primary)
-JIRA_BASE_URL=https://daveramsbottom.atlassian.net  # Your Jira instance URL
-JIRA_USERNAME=your.email@company.com         # Your Jira username/email
-JIRA_API_TOKEN=your_jira_api_token          # Jira API token (not password!)
-JIRA_DEFAULT_PROJECT=AT                      # Default project key (e.g., "AT" for "Agent Team")
+# Jira Configuration
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+JIRA_USERNAME=your.email@company.com
+JIRA_API_TOKEN=your_jira_api_token
+JIRA_DEFAULT_PROJECT=PROJ
 ```
 
 ### Current Status
 
-**Production-Ready Multi-Agent System**: AgentTeam v2.0 featuring intelligent Product Owner and Developer capabilities:
-- **Multi-Agent Architecture**: Two specialized AI agents working in coordination
-- **AI Integration**: Full OpenAI GPT-4o-mini integration with intelligent fallback systems
-- **Professional Workflow**: Complete Jira Cloud/Server integration for both story creation and task analysis
-- **Interactive Communication**: Real-time Slack integration with human-in-the-loop clarification for both agents
-- **Development Automation**: Automated task analysis, estimation, and implementation planning
-- **Scalable Architecture**: Designed for easy addition of new agent roles (Tester, DevOps, etc.)
-- **Status**: Production-ready multi-agent system actively used for complete development workflow
+**Production-Ready Multi-Agent System**: AgentTeam v2.0 featuring intelligent Product Owner and Developer capabilities with enhanced configuration:
+
+#### Implemented Agents (Working)
+- **✅ AgentIan (Product Owner)**: Requirements gathering, user story creation, stakeholder communication
+- **✅ AgentPete (Developer)**: Code implementation, technical analysis, effort estimation, implementation planning
+
+#### Core Features
+- **🤖 Multi-Agent Architecture**: Two specialized AI agents working in coordination
+- **🧠 AI Integration**: Full OpenAI GPT-4o-mini integration with intelligent fallback systems
+- **📋 Professional Workflow**: Complete Jira Cloud/Server integration for both story creation and task analysis
+- **💬 Interactive Communication**: Real-time Slack integration with human-in-the-loop clarification for both agents
+- **⚡ Development Automation**: Automated task analysis, estimation, and implementation planning
+- **🔄 Inter-Agent Communication**: Agents collaborate via Slack and coordinate through Jira
+
+#### Enhanced Configuration Framework
+- **🎯 Separate Identities**: Each agent can have distinct Slack/Jira credentials for authentic team interaction
+- **📝 Scalable Configuration**: Easy addition of new agent types (Manager, Tester, DevOps)
+- **🔙 Backward Compatibility**: Existing single-agent setups continue to work with legacy config
+- **👥 Professional Team Simulation**: Framework ready for realistic software development team dynamics
+
+#### Available Agent Types (Framework Ready)
+- **AgentManager**: Project coordinator and team builder (framework ready)
+- **AgentIan (Product Owner)**: ✅ **Implemented and Working**
+- **AgentPete (Developer)**: ✅ **Implemented and Working**
+- **AgentSarah (Tester)**: Quality assurance, test planning, bug tracking (framework ready)
+- **AgentMike (DevOps)**: Deployment, infrastructure, CI/CD pipeline management (framework ready)
+
+#### Status
+- **Working Agents**: ✅ AgentIan + AgentPete coordination in production
+- **Enhanced Configuration**: ✅ Multi-agent environment variables implemented
+- **Legacy Support**: ✅ Backward compatibility maintained  
+- **Manager Logic**: 🚧 Next phase - manager agent workflow implementation
 
 ### Testing Strategy
 

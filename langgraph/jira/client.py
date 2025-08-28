@@ -298,63 +298,178 @@ class JiraClient:
     
     def get_project_goal(self, project_key: str) -> Optional[str]:
         """
-        Extract project goal from Jira project description or name
-        This allows AgentIan to work with different projects dynamically
+        Extract project goal from a dedicated "Project Goal" Epic
+        This provides a visible, team-accessible way to set project goals
         """
         try:
+            # Look for an Epic with summary containing "Project Goal" or similar
+            goal_epic = self._find_project_goal_epic(project_key)
+            
+            if goal_epic and goal_epic.description:
+                logger.info(f"🎯 Found project goal in Epic '{goal_epic.summary}': {goal_epic.description[:100]}...")
+                return goal_epic.description.strip()
+            
+            # Try legacy project description approach as fallback
             project_details = self.get_project_details(project_key)
-            if not project_details:
-                logger.warning(f"⚠️ Could not get project details for {project_key}")
-                return None
+            if project_details:
+                description = project_details.get('description')
+                if description and len(description.strip()) > 20:
+                    logger.info(f"🎯 Found project goal in project description: {description[:100]}...")
+                    return description.strip()
             
-            # Try to get goal from project description first
-            description = project_details.get('description')
-            if description and len(description.strip()) > 20:
-                logger.info(f"🎯 Found project goal in description: {description[:100]}...")
-                return description.strip()
-            
-            # Fallback to project name if description is empty
-            name = project_details.get('name', '')
-            if name:
-                # Create a basic goal from the project name
-                goal = f"Work on the {name} project"
-                logger.info(f"🎯 Generated basic goal from project name: {goal}")
-                return goal
+            # Fallback to project name if no goal found
+            if project_details:
+                name = project_details.get('name', '')
+                if name:
+                    goal = f"Work on the {name} project"
+                    logger.info(f"🎯 Generated basic goal from project name: {goal}")
+                    return goal
             
             # Final fallback
-            logger.warning(f"⚠️ No suitable project goal found for {project_key}")
+            logger.warning(f"⚠️ No project goal found for {project_key}. Consider creating a 'Project Goal' Epic.")
             return f"Manage tasks and stories for project {project_key}"
             
         except Exception as e:
             logger.error(f"❌ Error getting project goal for {project_key}: {e}")
             return f"Work on project {project_key}"
+
+    def _find_project_goal_epic(self, project_key: str) -> Optional['JiraIssue']:
+        """Find the Epic that contains the project goal"""
+        try:
+            # Search for Epics with goal-related summaries
+            goal_keywords = ["Project Goal", "PROJECT GOAL", "Main Objective", "MAIN OBJECTIVE", "🎯"]
+            
+            for keyword in goal_keywords:
+                jql = f'project = "{project_key}" AND issuetype = Epic AND summary ~ "{keyword}"'
+                
+                params = {
+                    'jql': jql,
+                    'fields': 'summary,description',
+                    'maxResults': 5
+                }
+                
+                response = self.session.get(f"{self.base_url}/rest/api/3/search", params=params)
+                response.raise_for_status()
+                search_result = response.json()
+                
+                if search_result['issues']:
+                    # Return the first matching Epic
+                    epic_data = search_result['issues'][0]
+                    logger.info(f"🎯 Found project goal Epic: {epic_data['fields']['summary']}")
+                    return JiraIssue.from_jira_data(epic_data)
+            
+            # If no exact match, look for the first Epic (fallback)
+            jql = f'project = "{project_key}" AND issuetype = Epic'
+            params = {
+                'jql': jql,
+                'fields': 'summary,description',
+                'maxResults': 1,
+                'orderBy': 'created DESC'
+            }
+            
+            response = self.session.get(f"{self.base_url}/rest/api/3/search", params=params)
+            response.raise_for_status()
+            search_result = response.json()
+            
+            if search_result['issues']:
+                epic_data = search_result['issues'][0]
+                logger.info(f"📋 Using first Epic as project goal: {epic_data['fields']['summary']}")
+                return JiraIssue.from_jira_data(epic_data)
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Error finding project goal Epic: {e}")
+            return None
     
     def update_project_goal(self, project_key: str, new_goal: str) -> bool:
         """
-        Update the project description with a new goal
-        This allows setting project goals directly in Jira
+        Update or create a "Project Goal" Epic with the new goal
+        This provides a visible, team-accessible way to manage project goals
         """
         try:
-            # Jira Cloud API for updating project description
+            # Check if a project goal Epic already exists
+            goal_epic = self._find_project_goal_epic(project_key)
+            
+            if goal_epic:
+                # Update existing Epic
+                logger.info(f"🔄 Updating existing project goal Epic: {goal_epic.key}")
+                return self._update_epic_description(goal_epic.key, new_goal)
+            else:
+                # Create new project goal Epic
+                logger.info(f"✨ Creating new project goal Epic for {project_key}")
+                return self._create_project_goal_epic(project_key, new_goal)
+            
+        except Exception as e:
+            logger.error(f"❌ Error updating project goal for {project_key}: {e}")
+            return False
+
+    def _update_epic_description(self, epic_key: str, new_description: str) -> bool:
+        """Update an Epic's description"""
+        try:
+            adf_content = self._convert_to_adf(new_description)
             update_data = {
-                "description": new_goal
+                "fields": {
+                    "description": adf_content
+                }
             }
             
             response = self.session.put(
-                f"{self.base_url}/rest/api/3/project/{project_key}",
+                f"{self.base_url}/rest/api/3/issue/{epic_key}",
                 json=update_data
             )
             response.raise_for_status()
             
-            # Clear cache so next get_project_details gets fresh data
-            if project_key in self._project_cache:
-                del self._project_cache[project_key]
-            
-            logger.info(f"✅ Updated project goal for {project_key}")
+            logger.info(f"✅ Updated Epic {epic_key} with new project goal")
             return True
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Error updating project goal for {project_key}: {e}")
+            logger.error(f"❌ Error updating Epic {epic_key}: {e}")
+            return False
+
+    def _create_project_goal_epic(self, project_key: str, goal_description: str) -> bool:
+        """Create a new project goal Epic"""
+        try:
+            adf_content = self._convert_to_adf(goal_description)
+            
+            # Get project ID for Epic creation
+            project_details = self.get_project_details(project_key)
+            if not project_details:
+                logger.error(f"❌ Cannot get project details for {project_key}")
+                return False
+            
+            issue_data = {
+                "fields": {
+                    "project": {
+                        "key": project_key
+                    },
+                    "summary": "🎯 Project Goal",
+                    "description": adf_content,
+                    "issuetype": {
+                        "name": "Epic"
+                    }
+                }
+            }
+            
+            # Add Epic Name field if required (some Jira instances require it)
+            try:
+                issue_data["fields"]["customfield_10011"] = "Project Main Objective"  # Common Epic Name field
+            except:
+                pass  # Epic Name field may not exist in all instances
+            
+            response = self.session.post(
+                f"{self.base_url}/rest/api/3/issue",
+                json=issue_data
+            )
+            response.raise_for_status()
+            
+            created_issue = response.json()
+            epic_key = created_issue["key"]
+            logger.info(f"✅ Created project goal Epic: {epic_key}")
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Error creating project goal Epic: {e}")
             return False
     
     def get_issues(self, project_key: str, issue_types: List[str] = None) -> List[JiraIssue]:

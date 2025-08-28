@@ -11,14 +11,22 @@ Now AgentIan **dynamically pulls project goals from Jira** so you can use the sa
 ```bash
 python3 main.py --set-goal "Build a mobile expense tracking app with receipt scanning"
 ```
+*This creates/updates a "🎯 Project Goal" Epic in your Jira project*
 
 ### **Method 2: Directly in Jira (Recommended)**
 1. Go to your Jira project: `https://daveramsbottom.atlassian.net/browse/SCRUM`
-2. Click **Project Settings** → **Details**
-3. Edit the **Description** field with your project goal
-4. Save changes
+2. **Create New Epic** or **find existing "🎯 Project Goal" Epic**
+3. **Summary**: "🎯 Project Goal" (or similar)
+4. **Description**: Enter your detailed project goal
+5. Save the Epic
 
-### **Method 3: Via API (Advanced)**
+### **Method 3: Manual Epic Creation**
+1. **Create Epic** → **Summary**: "Project Goal"
+2. **Description**: Your detailed project objective
+3. Epic will be **visible in backlog and reports**
+4. **Team can easily find and reference** project goals
+
+### **Method 4: Via API (Advanced)**
 ```python
 from jira.client import JiraClient
 
@@ -29,9 +37,11 @@ client.update_project_goal("SCRUM", "Build a fitness tracking mobile app")
 ## 🔍 **How It Works:**
 
 ### **Goal Priority (AgentIan checks in this order):**
-1. **Jira Project Description** (if > 20 characters) ← **Primary source**
-2. **Project Name** (as fallback: "Work on the ProjectName project")
-3. **Generic fallback** ("Manage tasks for PROJECT_KEY")
+1. **"🎯 Project Goal" Epic Description** ← **Primary source (NEW!)**
+2. **Any Epic with "Project Goal" in summary** 
+3. **Jira Project Description** (legacy fallback)
+4. **Project Name** (as fallback: "Work on the ProjectName project")
+5. **Generic fallback** ("Manage tasks for PROJECT_KEY")
 
 ### **Enhanced Workflow:**
 ```python
@@ -66,15 +76,22 @@ Build a RESTful API for weather data aggregation with real-time updates, histori
 
 ## 🎯 **Benefits:**
 
+### **✅ Epic-Based Visibility:**
+- **Highly visible** in Jira backlog and boards
+- **Team accessible** - everyone can see and edit project goals
+- **Rich formatting** - supports full Jira description formatting
+- **Tracking friendly** - appears in reports and dashboards
+
 ### **✅ Multi-Project Support:**
 - Use same AgentTeam setup for different projects
 - Switch between projects by changing Jira project key
 - Each project gets context-aware questions and stories
 
 ### **✅ Team Collaboration:**
-- Project managers set goals in Jira (where they live)
+- Project managers set goals in visible Epics (not hidden project settings)
 - AgentIan automatically adapts to new goals
 - No code changes needed for new projects
+- **Easy for team members to find and reference**
 
 ### **✅ Context-Aware Intelligence:**
 - Different project types get different questions
@@ -119,10 +136,19 @@ python3 main.py --set-goal "Develop a REST API for task management with user aut
 3. Run AgentIan → Gets API specific stories
 
 ## 📊 **Current Status:**
-- ✅ Dynamic goal extraction from Jira working
-- ✅ Command-line goal setting working
-- ✅ Context-aware story generation working
-- ✅ Multi-project support enabled
-- ✅ Fallback handling for missing goals
+- ✅ **Epic-based goal extraction** - NEW! Prioritizes visible Epics
+- ✅ **Command-line Epic creation** - Creates "🎯 Project Goal" Epics
+- ✅ **Legacy fallback support** - Still works with project descriptions
+- ✅ **Dynamic goal extraction** from multiple sources working
+- ✅ **Context-aware story generation** working
+- ✅ **Multi-project support** enabled
+- ✅ **Team-visible project goals** in backlog and reports
 
-AgentIan is now **truly flexible** and can work with any project type by adapting to the goals you set in Jira!
+## 🎉 **What's New:**
+- **Epic-based project goals** are now the primary method
+- **Much more visible** to team members in Jira interface
+- **Better team collaboration** - everyone can see and edit goals
+- **Automatic Epic creation** via `--set-goal` command
+- **Backward compatible** - existing project description goals still work
+
+AgentIan is now **truly flexible and team-friendly** - project goals are visible, accessible, and easy to manage for the entire team!
