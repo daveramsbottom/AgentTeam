@@ -1,0 +1,35 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements for database only
+COPY requirements.txt .
+
+# Install only database-related dependencies
+RUN pip install --no-cache-dir \
+    sqlalchemy==2.0.23 \
+    alembic==1.12.1 \
+    psycopg2-binary==2.9.9 \
+    pydantic==2.5.0 \
+    python-dotenv==1.0.0
+
+# Copy only database-related code
+COPY app/database/ app/database/
+COPY app/__init__.py app/
+COPY alembic.ini .
+
+# Create data directory
+RUN mkdir -p data/local data/test data/sync
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Default command
+CMD ["python", "-c", "from app.database.database import create_tables; create_tables()"]

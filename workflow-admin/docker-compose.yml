@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for optional cloud sync
+  postgres:
+    image: postgres:15-alpine
+    container_name: workflow-admin-postgres
+    environment:
+      POSTGRES_DB: workflow_admin
+      POSTGRES_USER: workflow_admin
+      POSTGRES_PASSWORD: workflow_admin_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflow_admin -d workflow_admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - workflow-admin
+
+  # Backend API (FastAPI) - will be added in next phase
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: workflow-admin-backend
+    environment:
+      - DATABASE_URL=sqlite:///./data/local/workflow-admin.db
+      - CLOUD_DATABASE_URL=postgresql://workflow_admin:workflow_admin_password@postgres:5432/workflow_admin
+      - AUTO_CREATE_TABLES=true
+      - SQL_ECHO=false
+    volumes:
+      - ./backend:/app
+      - workflow_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - workflow-admin
+    profiles:
+      - api  # Only start when api profile is used
+
+  # Database migration service
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: workflow-admin-migrate
+    environment:
+      - DATABASE_URL=sqlite:///./data/local/workflow-admin.db
+      - CLOUD_DATABASE_URL=postgresql://workflow_admin:workflow_admin_password@postgres:5432/workflow_admin
+      - RUN_CLOUD_MIGRATIONS=true
+    volumes:
+      - ./backend:/app
+      - workflow_data:/app/data
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - workflow-admin
+    profiles:
+      - migrate
+
+  # Database testing service
+  test-db:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: workflow-admin-test
+    environment:
+      - DATABASE_URL=sqlite:///./data/test/workflow-admin-test.db
+      - AUTO_CREATE_TABLES=true
+      - SQL_ECHO=true
+    volumes:
+      - ./backend:/app
+      - workflow_test_data:/app/data
+    command: ["python", "-m", "pytest", "tests/", "-v"]
+    networks:
+      - workflow-admin
+    profiles:
+      - test
+
+  # Database-only development service  
+  db-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.db-only
+    container_name: workflow-admin-db-dev
+    environment:
+      - DATABASE_URL=sqlite:///./data/local/workflow-admin.db
+      - AUTO_CREATE_TABLES=true
+      - SQL_ECHO=true
+    volumes:
+      - ./backend:/app
+      - workflow_data:/app/data
+    command: ["python", "-c", "from app.database.database import create_tables, get_database_info; create_tables(); print('Database ready!'); import json; print(json.dumps(get_database_info(), indent=2)); import time; print('Database service running, container staying alive...'); time.sleep(86400)"]
+    networks:
+      - workflow-admin
+
+volumes:
+  postgres_data:
+    driver: local
+  workflow_data:
+    driver: local
+  workflow_test_data:
+    driver: local
+
+networks:
+  workflow-admin:
+    driver: bridge
