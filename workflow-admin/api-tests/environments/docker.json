@@ -1,0 +1,32 @@
+{
+  "id": "docker-env",
+  "name": "Docker Development",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://backend:8000",
+      "enabled": true
+    },
+    {
+      "key": "api_version",
+      "value": "v1",
+      "enabled": true
+    },
+    {
+      "key": "timeout",
+      "value": "5000",
+      "enabled": true
+    },
+    {
+      "key": "content_type",
+      "value": "application/json",
+      "enabled": true
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "enabled": false
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

@@ -1,0 +1,163 @@
+{
+  "info": {
+    "name": "Workflow Admin - Health Check",
+    "description": "Basic health checks and system validation for Workflow Admin API",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script for all requests",
+          "pm.request.headers.add({key: 'Content-Type', value: pm.environment.get('content_type')});",
+          "console.log('Running health check against:', pm.environment.get('base_url'));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script",
+          "pm.test('Response time is acceptable', function () {",
+          "    const timeout = parseInt(pm.environment.get('timeout'));",
+          "    pm.expect(pm.response.responseTime).to.be.below(timeout);",
+          "});",
+          "",
+          "pm.test('Response has correct Content-Type', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "collection_version",
+      "value": "1.0.0"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Health check returns 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Health check has correct structure', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('status');",
+              "    pm.expect(response).to.have.property('database');",
+              "    pm.expect(response.status).to.equal('healthy');",
+              "});",
+              "",
+              "pm.test('Database connection is working', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.database).to.have.property('local_connection_ok', true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Basic health check endpoint to verify API is running and database is connected"
+      },
+      "response": []
+    },
+    {
+      "name": "API Info",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('API info returns 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('API info has version information', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('version');",
+              "    pm.expect(response).to.have.property('description');",
+              "    pm.expect(response.description).to.include('Workflow Admin API');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/{{api_version}}/info",
+          "host": ["{{base_url}}"],
+          "path": ["api", "{{api_version}}", "info"]
+        },
+        "description": "Get API version and system information"
+      },
+      "response": []
+    },
+    {
+      "name": "Database Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Database status returns 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Database status shows tables', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('tables');",
+              "    pm.expect(response.tables).to.be.an('array');",
+              "    pm.expect(response.tables.length).to.be.greaterThan(5);",
+              "});",
+              "",
+              "pm.test('Required tables exist', function () {",
+              "    const response = pm.response.json();",
+              "    const tableNames = response.tables.map(table => table.name);",
+              "    const requiredTables = ['projects', 'workflows', 'agents', 'agent_types', 'teams'];",
+              "    ",
+              "    requiredTables.forEach(tableName => {",
+              "        pm.expect(tableNames).to.include(tableName, `Table ${tableName} should exist`);",
+              "    });",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/{{api_version}}/database/status",
+          "host": ["{{base_url}}"],
+          "path": ["api", "{{api_version}}", "database", "status"]
+        },
+        "description": "Check database connectivity and table structure"
+      },
+      "response": []
+    }
+  ]
+}

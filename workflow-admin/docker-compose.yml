@@ -87,6 +87,22 @@ services:
     profiles:
       - test
 
+  # API testing service with Newman
+  test-api:
+    image: postman/newman:alpine
+    container_name: workflow-admin-api-tests
+    volumes:
+      - ./api-tests:/tests
+    working_dir: /tests
+    command: ["newman", "run", "collections/fastapi-crud.postman.json", "--environment", "environments/docker.json", "--reporters", "json,cli", "--delay-request", "500"]
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - workflow-admin
+    profiles:
+      - api-test
+
   # Database-only development service  
   db-dev:
     build:

@@ -1,0 +1,180 @@
+{
+  "info": {
+    "name": "Workflow Admin - Database Validation",
+    "description": "Validation tests for Docker database connectivity and schema verification",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "console.log('🔍 Testing database validation against:', pm.environment.get('base_url'));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "collection_version",
+      "value": "1.0.0"
+    }
+  ],
+  "item": [
+    {
+      "name": "Test 1: Container Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Container is responding', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Response is JSON', function () {",
+              "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+              "});",
+              "",
+              "pm.test('✅ Response time under 2 seconds', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});",
+              "",
+              "// Log response for debugging",
+              "console.log('📊 Health Response:', pm.response.json());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Basic health check to verify the container is running and responding"
+      }
+    },
+    {
+      "name": "Test 2: Database Connection Verification",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Database endpoint accessible', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Database connection is working', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('local_connection_ok', true);",
+              "});",
+              "",
+              "pm.test('✅ Database URL is configured', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('local_database_url');",
+              "    pm.expect(response.local_database_url).to.include('.db');",
+              "});",
+              "",
+              "pm.test('✅ Engine is SQLite', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.engine_info.dialect).to.equal('sqlite');",
+              "});",
+              "",
+              "// Store database info for next test",
+              "const dbInfo = pm.response.json();",
+              "pm.collectionVariables.set('db_url', dbInfo.local_database_url);",
+              "console.log('🗄️ Database URL:', dbInfo.local_database_url);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/database/status",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "database", "status"]
+        },
+        "description": "Verify database connection and basic configuration"
+      }
+    },
+    {
+      "name": "Test 3: Agent Tables Schema Validation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Database tables endpoint accessible', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Tables array exists and has content', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('tables');",
+              "    pm.expect(response.tables).to.be.an('array');",
+              "    pm.expect(response.tables.length).to.be.greaterThan(5);",
+              "});",
+              "",
+              "pm.test('✅ Core workflow tables exist', function () {",
+              "    const response = pm.response.json();",
+              "    const tableNames = response.tables.map(table => table.name);",
+              "    const coreWorkflowTables = ['projects', 'workflows', 'workflow_templates', 'workflow_runs'];",
+              "    ",
+              "    coreWorkflowTables.forEach(tableName => {",
+              "        pm.expect(tableNames).to.include(tableName, `❌ Missing core table: ${tableName}`);",
+              "    });",
+              "    ",
+              "    console.log('✅ Core workflow tables verified:', coreWorkflowTables.length);",
+              "});",
+              "",
+              "pm.test('✅ Agent system tables exist', function () {",
+              "    const response = pm.response.json();",
+              "    const tableNames = response.tables.map(table => table.name);",
+              "    const agentTables = ['agent_types', 'agents', 'teams', 'team_members', 'workflow_assignments', 'agent_performance'];",
+              "    ",
+              "    agentTables.forEach(tableName => {",
+              "        pm.expect(tableNames).to.include(tableName, `❌ Missing agent table: ${tableName}`);",
+              "    });",
+              "    ",
+              "    console.log('✅ Agent system tables verified:', agentTables.length);",
+              "});",
+              "",
+              "pm.test('✅ Total table count is reasonable', function () {",
+              "    const response = pm.response.json();",
+              "    const tableCount = response.tables.length;",
+              "    pm.expect(tableCount).to.be.at.least(10, 'Should have at least 10 tables');",
+              "    pm.expect(tableCount).to.be.at.most(20, 'Should not have more than 20 tables');",
+              "    console.log('📊 Total database tables:', tableCount);",
+              "});",
+              "",
+              "// Log all table names for verification",
+              "const response = pm.response.json();",
+              "console.log('📋 All database tables:', response.tables.map(t => t.name).join(', '));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/database/status",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "database", "status"]
+        },
+        "description": "Validate that all required database tables exist for the agent-workflow system"
+      }
+    }
+  ]
+}

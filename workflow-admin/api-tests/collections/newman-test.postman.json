@@ -1,0 +1,100 @@
+{
+  "info": {
+    "name": "Newman Setup Test",
+    "description": "Basic test to verify Newman is working correctly",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "console.log('🧪 Newman Setup Test Starting...');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Test 1: Basic HTTP Request (Google)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ HTTP request works', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Response time acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+              "});",
+              "",
+              "console.log('📊 Response time:', pm.response.responseTime + 'ms');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://www.google.com",
+          "protocol": "https",
+          "host": ["www", "google", "com"]
+        },
+        "description": "Basic HTTP request to verify Newman can make external calls"
+      }
+    },
+    {
+      "name": "Test 2: Environment Variables",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Environment variables loaded', function () {",
+              "    const baseUrl = pm.environment.get('base_url');",
+              "    const apiVersion = pm.environment.get('api_version');",
+              "    ",
+              "    pm.expect(baseUrl).to.not.be.undefined;",
+              "    pm.expect(apiVersion).to.not.be.undefined;",
+              "    ",
+              "    console.log('🌍 Base URL:', baseUrl);",
+              "    console.log('📦 API Version:', apiVersion);",
+              "});",
+              "",
+              "pm.test('✅ Collection variables work', function () {",
+              "    pm.collectionVariables.set('test_timestamp', Date.now());",
+              "    const timestamp = pm.collectionVariables.get('test_timestamp');",
+              "    pm.expect(timestamp).to.be.a('number');",
+              "    console.log('⏰ Test timestamp:', timestamp);",
+              "});",
+              "",
+              "pm.test('✅ Newman is working correctly', function () {",
+              "    console.log('🎉 Newman setup test PASSED!');",
+              "    pm.expect(true).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://httpbin.org/json",
+          "protocol": "https",
+          "host": ["httpbin", "org"],
+          "path": ["json"]
+        },
+        "description": "Test environment variables and collection functionality"
+      }
+    }
+  ]
+}
