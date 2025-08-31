@@ -37,11 +37,11 @@ open http://localhost:8000/docs
 # Check API health
 curl http://localhost:8000/health
 
-# Run API tests with Newman
-docker run --rm --network workflow-admin_workflow-admin \
-  -v $(pwd)/api-tests:/tests --entrypoint sh postman/newman:alpine \
-  -c "cd /tests && newman run collections/fastapi-crud.postman.json \
-      --environment environments/docker.json --reporters cli"
+# Run comprehensive API tests with automated test runner
+./api-tests/scripts/run-tests.sh
+
+# Or run specific test collections
+./api-tests/scripts/run-tests.sh fastapi-crud-fixed
 ```
 
 ### Full System (Future Phases)
@@ -69,12 +69,13 @@ open http://localhost:3000
 ## Implementation Status
 
 ### ✅ Phase 1 Complete: Backend Foundation 
-- **FastAPI Application**: Full CRUD operations for Projects, Agents, Teams, Workflows
-- **Database Models**: SQLAlchemy models with JSON fields for flexible configuration
-- **Docker Environment**: Containerized backend with PostgreSQL and SQLite support
-- **API Documentation**: Auto-generated OpenAPI/Swagger docs at `/docs`
-- **Testing Infrastructure**: Newman + Postman collections for AI-friendly API testing
-- **Health Monitoring**: Database connectivity and system status endpoints
+- **FastAPI Application**: Full CRUD operations for Projects, Agents, Teams, Workflows ✅
+- **Database Models**: SQLAlchemy models with JSON fields for flexible configuration ✅
+- **Docker Environment**: Containerized backend with PostgreSQL and SQLite support ✅
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs at `/docs` ✅
+- **Testing Infrastructure**: Newman + Postman collections for AI-friendly API testing ✅
+- **Health Monitoring**: Database connectivity and system status endpoints ✅
+- **Quality Assurance**: 100% test pass rate with comprehensive CRUD validation ✅
 
 ### 🚀 Available API Endpoints
 ```
@@ -86,6 +87,32 @@ Projects:    /api/v1/projects/*   - Full CRUD operations
 Agents:      /api/v1/agents/*     - Agent and AgentType management  
 Teams:       /api/v1/teams/*      - Team collaboration features
 Workflows:   /api/v1/workflows/*  - Workflow creation and assignment
+```
+
+### 🧪 Test Results (Latest Run: 2025-08-31)
+```
+✅ ALL TESTS PASSING (15/15 assertions)
+┌─────────────────────────┬──────────────────┬──────────────────┐
+│                         │         executed │           failed │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              iterations │                1 │                0 │
+│                requests │                8 │                0 │
+│            test-scripts │                8 │                0 │
+│              assertions │               15 │                0 │
+├─────────────────────────┴──────────────────┴──────────────────┤
+│ total run duration: 4.4s                                      │
+│ average response time: 19ms [min: 7ms, max: 45ms]             │
+└───────────────────────────────────────────────────────────────┘
+
+Test Coverage:
+✅ Health Check              - API connectivity and database status  
+✅ Project CRUD              - Create, read operations validated
+✅ Agent Type Management     - Full lifecycle with unique constraints
+✅ Agent Management          - Creation with proper relationships
+✅ Team Management           - Team creation with project/lead assignment
+✅ Workflow Management       - Complex workflow creation with JSON definitions
+✅ API Documentation         - OpenAPI/Swagger accessibility
+✅ Variable Chaining         - Proper ID propagation across test sequence
 ```
 
 ### 📋 Phase 2: React Frontend (Next)

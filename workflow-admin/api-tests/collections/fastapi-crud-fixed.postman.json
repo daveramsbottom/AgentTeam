@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "FastAPI CRUD Tests - Fixed",
+    "description": "Corrected test suite for Workflow Admin FastAPI CRUD endpoints",
+    "version": "1.0.1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "console.log('🚀 FastAPI CRUD Test Suite Starting...');",
+          "// Generate unique names to avoid UNIQUE constraint errors",
+          "const timestamp = Date.now();",
+          "pm.collectionVariables.set('timestamp', timestamp);",
+          "pm.collectionVariables.set('unique_project_name', `Test Project ${timestamp}`);",
+          "pm.collectionVariables.set('unique_agent_type_name', `Test Agent Type ${timestamp}`);",
+          "pm.collectionVariables.set('unique_agent_name', `Test Agent ${timestamp}`);",
+          "pm.collectionVariables.set('unique_team_name', `Test Team ${timestamp}`);",
+          "pm.collectionVariables.set('unique_workflow_name', `Test Workflow ${timestamp}`);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "project_id",
+      "value": ""
+    },
+    {
+      "key": "agent_type_id", 
+      "value": ""
+    },
+    {
+      "key": "agent_id",
+      "value": ""
+    },
+    {
+      "key": "team_id",
+      "value": ""
+    },
+    {
+      "key": "workflow_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Health check returns 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Health check response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('status');",
+              "    pm.expect(response).to.have.property('database');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Create Project",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Project created successfully', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Project response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('name');",
+              "    pm.collectionVariables.set('project_id', response.id);",
+              "    console.log('📝 Created project ID:', response.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "{{content_type}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{unique_project_name}}\",\n  \"description\": \"A test project for API validation\",\n  \"settings\": {\n    \"priority\": \"high\",\n    \"category\": \"testing\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/projects/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "projects", ""]
+        }
+      }
+    },
+    {
+      "name": "Get Projects",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Get projects returns 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Projects array response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.be.an('array');",
+              "    pm.expect(response.length).to.be.at.least(1);",
+              "    if (response.length > 0) {",
+              "        pm.expect(response[0]).to.have.property('id');",
+              "        pm.expect(response[0]).to.have.property('name');",
+              "    }",
+              "    console.log('📊 Found', response.length, 'projects');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/projects/?skip=0&limit=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "projects", ""],
+          "query": [
+            {
+              "key": "skip",
+              "value": "0"
+            },
+            {
+              "key": "limit", 
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Agent Type",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Agent type created successfully', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Agent type response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('name');",
+              "    pm.collectionVariables.set('agent_type_id', response.id);",
+              "    console.log('🤖 Created agent type ID:', response.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "{{content_type}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{unique_agent_type_name}}\",\n  \"description\": \"AI Product Owner agent for requirements gathering\",\n  \"capabilities\": {\n    \"skills\": [\"requirements_analysis\", \"user_story_creation\"],\n    \"tools\": [\"jira\", \"slack\"],\n    \"integrations\": [\"atlassian\"]\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/agents/types/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "agents", "types", ""]
+        }
+      }
+    },
+    {
+      "name": "Create Agent",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Agent created successfully', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Agent response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('name');",
+              "    pm.expect(response).to.have.property('agent_type_id');",
+              "    pm.collectionVariables.set('agent_id', response.id);",
+              "    console.log('🤖 Created agent ID:', response.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "{{content_type}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{unique_agent_name}}\",\n  \"agent_type_id\": {{agent_type_id}},\n  \"description\": \"Primary Product Owner agent for project requirements\",\n  \"status\": \"active\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/agents/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "agents", ""]
+        }
+      }
+    },
+    {
+      "name": "Create Team",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Team created successfully', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Team response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('name');",
+              "    pm.collectionVariables.set('team_id', response.id);",
+              "    console.log('👥 Created team ID:', response.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "{{content_type}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{unique_team_name}}\",\n  \"description\": \"Primary development team for AgentTeam project\",\n  \"project_id\": {{project_id}},\n  \"team_lead_id\": {{agent_id}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/teams/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "teams", ""]
+        }
+      }
+    },
+    {
+      "name": "Create Workflow",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Workflow created successfully', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Workflow response format', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('name');",
+              "    pm.expect(response).to.have.property('definition');",
+              "    pm.collectionVariables.set('workflow_id', response.id);",
+              "    console.log('⚡ Created workflow ID:', response.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "{{content_type}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{unique_workflow_name}}\",\n  \"description\": \"Standard workflow for gathering and processing project requirements\",\n  \"project_id\": {{project_id}},\n  \"assigned_team_id\": {{team_id}},\n  \"primary_agent_id\": {{agent_id}},\n  \"definition\": {\n    \"nodes\": [\n      {\n        \"id\": \"start\",\n        \"type\": \"start\",\n        \"name\": \"Requirements Gathering Start\"\n      },\n      {\n        \"id\": \"analyze_goal\",\n        \"type\": \"task\",\n        \"name\": \"Analyze Project Goal\"\n      },\n      {\n        \"id\": \"complete\",\n        \"type\": \"end\",\n        \"name\": \"Requirements Complete\"\n      }\n    ],\n    \"edges\": [\n      {\"from\": \"start\", \"to\": \"analyze_goal\"},\n      {\"from\": \"analyze_goal\", \"to\": \"complete\"}\n    ]\n  },\n  \"status\": \"active\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/workflows/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "workflows", ""]
+        }
+      }
+    },
+    {
+      "name": "Get API Documentation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ API documentation accessible', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.headers.get('content-type')).to.include('text/html');",
+              "});",
+              "",
+              "console.log('📚 FastAPI documentation is available at /docs');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/docs",
+          "host": ["{{base_url}}"],
+          "path": ["docs"]
+        }
+      }
+    }
+  ]
+}
