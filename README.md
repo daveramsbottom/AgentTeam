@@ -1,8 +1,10 @@
-# 🤖 AgentTeam - AI-Powered Development Team Simulation
+# 🤖 AgentTeam - AI-Powered Development Team Simulation with Hierarchical Workflow Management
 
-> **AgentIan**: An intelligent AI Product Owner that transforms project ideas into professional user stories through interactive requirements gathering.
+> **Revolutionary AI multi-agent system** that simulates professional software development teams with intelligent workflow orchestration, context-aware agent management, and hierarchical project structure.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![React 18+](https://img.shields.io/badge/react-18+-blue.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.2+-blue.svg)](https://www.typescriptlang.org/)
 [![OpenAI GPT-4o-mini](https://img.shields.io/badge/AI-OpenAI_GPT--4o--mini-green.svg)](https://openai.com/)
 [![Docker](https://img.shields.io/badge/deployment-Docker-blue.svg)](https://docker.com/)
 [![Jira Integration](https://img.shields.io/badge/integration-Jira_Cloud-blue.svg)](https://www.atlassian.com/software/jira)
@@ -10,13 +12,35 @@
 
 ## 🌟 What is AgentTeam?
 
-AgentTeam is a sophisticated AI multi-agent system that simulates a professional software development team. Currently featuring **AgentIan**, an AI-powered Product Owner agent that revolutionizes project requirements gathering through:
+AgentTeam is a sophisticated AI multi-agent system that simulates professional software development teams through intelligent workflow orchestration and hierarchical context management. The system features both **autonomous AI agents** and a comprehensive **workflow management interface**:
 
-- **🤖 Intelligent Analysis**: Uses OpenAI GPT-4o-mini to analyze project complexity and generate tailored clarification questions
-- **💬 Interactive Communication**: Conducts real-time requirements gathering via Slack with human-in-the-loop feedback
-- **🔍 Text Enhancement**: Automatically improves human responses for clarity, grammar, and completeness
-- **📋 Professional Output**: Creates detailed user stories in Jira with acceptance criteria and proper formatting
-- **🎯 Transparency**: Provides clear AI analysis and decision-making visibility
+### 🤖 **AI Agents** (Production Ready)
+- **AgentIan** (Product Owner): Intelligent requirements gathering, user story creation, stakeholder communication
+- **AgentPete** (Senior Developer): Technical analysis, effort estimation, implementation planning
+- **AgentSarah** (QA Engineer): Test planning, quality assurance, bug tracking (planned)
+
+### 🏗️ **Workflow-Admin System** (New!)
+- **Hierarchical Project Management**: Project → Teams → Agents with context inheritance
+- **Context-Aware Agent Creation**: AI-friendly context propagation for intelligent agent behavior
+- **Visual Workflow Management**: React-based UI for managing multi-agent workflows
+- **Dynamic Team Creation**: AI-powered team composition suggestions
+- **Real-time Monitoring**: Agent performance tracking and workflow analytics
+
+## ✨ **Key Features**
+
+### **Intelligent AI Agents**
+- **🧠 AI-Powered Analysis**: Uses OpenAI GPT-4o-mini for project complexity assessment and requirement analysis
+- **💬 Interactive Communication**: Real-time requirements gathering via Slack with human-in-the-loop feedback
+- **🔍 Context Intelligence**: Automatically understands project context and team dynamics
+- **📋 Professional Output**: Creates detailed user stories and technical analyses in Jira
+- **🎯 Performance Tracking**: Transparent AI decision-making with success metrics
+
+### **Hierarchical Workflow Management**
+- **🏗️ Project Context Inheritance**: Rich context flows from Project → Teams → Agents
+- **👥 Dynamic Team Creation**: AI suggests optimal team composition based on project needs
+- **🔄 Workflow Orchestration**: Manages complex multi-agent workflows with dependencies
+- **📊 Visual Management Interface**: React-based UI for intuitive project and agent management
+- **⚡ Real-time Updates**: Live monitoring of agent status, workload, and performance
 
 ## 🚀 Quick Start
 
@@ -27,44 +51,39 @@ AgentTeam is a sophisticated AI multi-agent system that simulates a professional
 - Slack Bot Token and Channel ID
 - Jira Cloud instance with API token
 
-### 1. Clone and Configure
+### Option 1: Run AI Agents (Production Ready)
 
 ```bash
+# Clone and configure
 git clone https://github.com/daveramsbottom/AgentTeam.git
 cd AgentTeam
 cp .env.example .env
-```
 
-### 2. Set Environment Variables
-
-Edit `.env` with your credentials:
-
-```bash
+# Edit .env with your credentials
 # OpenAI Configuration
 OPENAI_API_KEY=sk-proj-your-openai-key-here
-
-# Jira Configuration
+# Jira Configuration  
 JIRA_BASE_URL=https://yourcompany.atlassian.net
 JIRA_USERNAME=your.email@company.com
 JIRA_API_TOKEN=your-jira-api-token
-JIRA_DEFAULT_PROJECT=YOUR_PROJECT_KEY
-
-# Slack Configuration  
+# Slack Configuration
 SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
 SLACK_CHANNEL_ID=C-your-channel-id
+
+# Run both agents
+docker-compose up agentian agentpete
 ```
 
-### 3. Run AgentIan
+### Option 2: Run Workflow-Admin Interface (New!)
 
 ```bash
-# Production mode
-docker-compose up agentian
+# Start the workflow management system
+cd workflow-admin
+docker-compose up
 
-# Development mode (keeps container running)
-docker-compose up agentian-dev
-
-# Debug Slack integration
-docker-compose exec agentian-dev python main.py --debug-slack
+# Access the interface
+open http://localhost:3000  # React frontend
+open http://localhost:8000/docs  # API documentation
 ```
 
 ## 🎯 How It Works
@@ -97,17 +116,31 @@ AgentIan uses AI to analyze your project goal and assess:
 
 ```
 AgentTeam/
-├── langgraph/                 # Main application
-│   ├── agents/               # AgentIan implementation  
-│   ├── ai/                  # OpenAI integration
-│   ├── communication/        # Slack client
-│   ├── workflows/           # LangGraph orchestration
-│   ├── jira/               # Jira API integration
-│   ├── utils/              # Configuration & logging
-│   └── main.py            # Entry point
-├── archive/                  # Legacy code & scripts
-├── docker-compose.yml        # Container orchestration
-└── .env                     # Configuration (create from .env.example)
+├── langgraph/                    # AI Agents (Production)
+│   ├── agents/                   # AgentIan, AgentPete implementations
+│   ├── ai/                      # OpenAI integration & analysis
+│   ├── communication/           # Slack client integration
+│   ├── workflows/               # LangGraph workflow orchestration
+│   ├── jira/                   # Jira API integration
+│   └── main.py, main_pete.py   # Agent entry points
+├── workflow-admin/               # Workflow Management System (New!)
+│   ├── backend/                 # FastAPI + SQLAlchemy backend
+│   │   ├── app/
+│   │   │   ├── database/        # Models with hierarchical context
+│   │   │   ├── routers/         # REST API endpoints
+│   │   │   └── main.py         # FastAPI application
+│   │   └── requirements.txt
+│   ├── frontend/                # React + TypeScript frontend
+│   │   ├── src/
+│   │   │   ├── api/            # Context-aware API interfaces
+│   │   │   ├── components/     # Hierarchical UI components
+│   │   │   └── App.tsx        # Main application
+│   │   └── package.json
+│   ├── api-tests/              # API testing infrastructure
+│   ├── HIERARCHICAL_ARCHITECTURE.md  # Architecture documentation
+│   └── docker-compose.yml     # Multi-service orchestration
+├── archive/                     # Legacy code & experimental features
+└── docker-compose.yml          # Main agent orchestration
 ```
 
 ## 🛠️ Available Commands
@@ -152,12 +185,23 @@ python langgraph/main.py --help
 4. **Provide Clarification**: Answer questions in Slack thread
 5. **Get Results**: View created user stories in your Jira project
 
-## 🔮 Future Expansion
+## 🔮 Current Status & Future Expansion
 
-The architecture is designed to support additional AI agents:
-- **AgentPete** (Developer): Code implementation and technical tasks
-- **AgentSarah** (Tester): Test planning and quality assurance  
-- **AgentMike** (DevOps): Infrastructure and deployment automation
+### ✅ **Production Ready**
+- **AgentIan** (Product Owner): Full workflow implementation with Slack/Jira integration
+- **AgentPete** (Senior Developer): Technical analysis and effort estimation
+- **Workflow-Admin UI**: Hierarchical project management with React frontend
+- **Context Inheritance**: AI-friendly context propagation system
+
+### 🚧 **In Development**
+- **Dynamic Team Creation**: AI-powered team composition suggestions
+- **Advanced Analytics**: Agent performance tracking and workflow optimization
+- **Multi-Project Management**: Cross-project resource allocation
+
+### 🔮 **Planned Agents**
+- **AgentSarah** (QA Engineer): Test planning, quality assurance, bug tracking
+- **AgentMike** (DevOps): Infrastructure management, deployment automation
+- **AgentManager** (Project Manager): Cross-team coordination and resource planning
 
 ## 🤝 Contributing
 

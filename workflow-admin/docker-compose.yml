@@ -22,7 +22,7 @@ services:
     networks:
       - workflow-admin
 
-  # Backend API (FastAPI) - will be added in next phase
+  # Backend API (FastAPI)
   backend:
     build: 
       context: ./backend
@@ -45,6 +45,23 @@ services:
       - workflow-admin
     profiles:
       - api  # Only start when api profile is used
+      - full  # Include in full stack deployment
+
+  # Frontend (React + Vite + Material-UI)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: workflow-admin-frontend
+    ports:
+      - "3000:3000"  # External browser access
+    depends_on:
+      - backend
+    networks:
+      - workflow-admin
+    profiles:
+      - frontend
+      - full  # Include in full stack deployment
 
   # Database migration service
   migrate:
