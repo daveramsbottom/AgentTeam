@@ -47,7 +47,7 @@ services:
       - api  # Only start when api profile is used
       - full  # Include in full stack deployment
 
-  # Frontend (React + Vite + Material-UI)
+  # Frontend Production (React + Vite + Material-UI + Nginx)
   frontend:
     build:
       context: ./frontend
@@ -55,13 +55,31 @@ services:
     container_name: workflow-admin-frontend
     ports:
       - "3000:3000"  # External browser access
-    depends_on:
-      - backend
     networks:
       - workflow-admin
     profiles:
-      - frontend
+      - frontend-prod
       - full  # Include in full stack deployment
+
+  # Frontend Development (React + Vite dev server)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: workflow-admin-frontend-dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevent overwriting node_modules
+    ports:
+      - "3000:3000"  # External browser access
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Enable hot reload in Docker
+      - VITE_API_BASE_URL=http://backend:8000  # API endpoint for container
+    networks:
+      - workflow-admin
+    profiles:
+      - frontend-dev
+      - frontend  # Default to dev for easier development
 
   # Database migration service
   migrate:

@@ -19,4 +19,5 @@ services:
     
 networks:
   workflow-admin:
-    external: true  # Use existing network from main compose
+    external: 
+      name: workflow-admin_workflow-admin  # Use existing network from main compose
