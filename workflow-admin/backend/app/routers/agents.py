@@ -38,8 +38,11 @@ def get_agent_types(
     agent_types = query.offset(skip).limit(limit).all()
     total = query.count()
     
+    # Convert SQLAlchemy models to Pydantic schemas
+    agent_type_schemas = [AgentType.from_orm(agent_type) for agent_type in agent_types]
+    
     return PaginatedResponse(
-        items=agent_types,
+        items=agent_type_schemas,
         total=total,
         page=skip // limit + 1,
         size=limit,
@@ -107,8 +110,11 @@ def get_agents(
     agents = query.offset(skip).limit(limit).all()
     total = query.count()
     
+    # Convert SQLAlchemy models to Pydantic schemas
+    agent_schemas = [Agent.from_orm(agent) for agent in agents]
+    
     return PaginatedResponse(
-        items=agents,
+        items=agent_schemas,
         total=total,
         page=skip // limit + 1,
         size=limit,

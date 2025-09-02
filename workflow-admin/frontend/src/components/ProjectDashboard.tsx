@@ -173,6 +173,20 @@ const ProjectDashboard: React.FC = () => {
                             {project.description}
                           </Typography>
                           
+                          {project.context && (
+                            <Typography variant="body2" color="text.primary" sx={{ 
+                              fontStyle: 'italic', 
+                              backgroundColor: 'grey.50', 
+                              p: 1, 
+                              borderRadius: 1,
+                              mb: 2,
+                              border: '1px solid',
+                              borderColor: 'grey.200'
+                            }}>
+                              <strong>Context:</strong> {project.context}
+                            </Typography>
+                          )}
+                          
                           <Box display="flex" gap={1} mb={2}>
                             {project.priority && (
                               <Chip

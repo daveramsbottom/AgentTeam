@@ -26,6 +26,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
+    context = Column(Text)  # Description of what the project will achieve
     settings = Column(JSON)  # Project-specific settings and preferences
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -630,6 +631,31 @@ class AgentSession(Base):
         return f"<AgentSession(id='{self.session_id}', agent='{self.agent.name if self.agent else 'Unknown'}', status='{self.session_status}')>"
 
 
+class AgentSessionInteraction(Base):
+    """
+    Tracks interactions within agent sessions
+    Used for logging session events, messages, and state changes
+    """
+    __tablename__ = "agent_session_interactions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(255), ForeignKey("agent_sessions.session_id"), nullable=False, index=True)
+    interaction_type = Column(String(50), nullable=False, index=True)  # 'message', 'state_change', 'error', 'user_input', 'external_call'
+    interaction_data = Column(JSON, nullable=False)  # Interaction content and context
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Optional external references
+    external_message_id = Column(String(100), index=True)  # Slack message ID, external system reference
+    response_to_id = Column(Integer, ForeignKey("agent_session_interactions.id"), index=True)  # Reference to previous interaction
+    
+    # Relationships
+    session = relationship("AgentSession", back_populates="interactions")
+    response_to = relationship("AgentSessionInteraction", remote_side=[id])
+    
+    def __repr__(self):
+        return f"<AgentSessionInteraction(id={self.id}, session='{self.session_id}', type='{self.interaction_type}')>"
+
+
 class TeamCoordinationRule(Base):
     """
     Rules for how agents coordinate and work together
@@ -918,3 +944,31 @@ class AgentInteraction(Base):
     def __repr__(self):
         to_name = self.to_agent.name if self.to_agent else "All"
         return f"<AgentInteraction(from='{self.from_agent.name if self.from_agent else 'Unknown'}', to='{to_name}', type='{self.interaction_type}', status='{self.status}')>"
+
+
+class AgentContext(Base):
+    """
+    Context storage for individual agents
+    Used for session data, persistent memory, and workflow context
+    """
+    __tablename__ = "agent_contexts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=True, index=True)
+    context_type = Column(String(50), nullable=False, index=True)  # session, persistent, project, memory
+    context_key = Column(String(255), nullable=False, index=True)
+    context_data = Column(JSON, nullable=False)  # Context payload
+    priority = Column(Integer, default=5, index=True)  # 1=urgent, 5=normal, 9=low
+    expires_at = Column(DateTime(timezone=True))
+    accessed_at = Column(DateTime(timezone=True))
+    version = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    agent = relationship("Agent", back_populates="contexts")
+    workflow = relationship("Workflow")
+    
+    def __repr__(self):
+        return f"<AgentContext(id={self.id}, agent='{self.agent.name if self.agent else 'Unknown'}', type='{self.context_type}', key='{self.context_key}')>"
