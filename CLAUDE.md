@@ -165,7 +165,7 @@ AgentTeam/
 │   ├── main.py            # AgentIan entry point
 │   ├── main_pete.py       # AgentPete entry point
 │   └── test_agent_pete.py # AgentPete test suite
-├── workflow-admin/           # Database-driven workflow management (future)
+├── workflow-admin/           # Database-driven workflow management & organizational intelligence layer
 ├── archive/                  # Archived legacy code (Taiga, old files)
 ├── docker-compose.yml        # Multi-agent container orchestration
 └── .env                     # Environment configuration
@@ -332,6 +332,26 @@ JIRA_DEFAULT_PROJECT=PROJ
 ### Current Status
 
 **Production-Ready Multi-Agent System**: AgentTeam v2.0 featuring intelligent Product Owner and Developer capabilities with enhanced configuration:
+
+#### Agent Integration Layer (Phase 3 - Design Complete)
+**Status**: Data models and API schemas complete. Ready for implementation in `workflow-admin/`.
+
+The workflow-admin system serves as the **organizational intelligence layer** that:
+- Stores business domain knowledge, technical standards, and process definitions
+- Coordinates multi-agent workflows and manages handoffs between agents  
+- Tracks workflow sessions and maintains institutional memory across projects
+- Provides context-aware agent startup (agents load organizational context before beginning work)
+
+**Key Documentation**:
+- [`workflow-admin/README.md`](./workflow-admin/README.md) - System overview and current status
+- [`workflow-admin/AGENT_INTEGRATION_PLAN.md`](./workflow-admin/AGENT_INTEGRATION_PLAN.md) - Complete implementation plan for agent integration
+- [`workflow-admin/backend/app/database/models.py`](./workflow-admin/backend/app/database/models.py) - Complete data model for organizational intelligence
+- [`workflow-admin/backend/app/schemas.py`](./workflow-admin/backend/app/schemas.py) - API schemas for agent integration
+
+**Integration Architecture**:
+- **Agent Outputs** (stories, technical analysis) → **Jira** (as designed)
+- **Organizational Intelligence** (context, coordination) → **workflow-admin** (new)
+- **Communication Bridge**: Metadata and coordination flows between systems
 
 #### Implemented Agents (Working)
 - **✅ AgentIan (Product Owner)**: Requirements gathering, user story creation, stakeholder communication

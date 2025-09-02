@@ -90,6 +90,7 @@ class Workflow(Base):
     primary_agent = relationship("Agent", foreign_keys=[primary_agent_id])
     nodes = relationship("WorkflowNode", back_populates="workflow", cascade="all, delete-orphan")
     edges = relationship("WorkflowEdge", back_populates="workflow", cascade="all, delete-orphan")
+    steps = relationship("WorkflowStep", back_populates="workflow", cascade="all, delete-orphan")
     runs = relationship("WorkflowRun", back_populates="workflow", cascade="all, delete-orphan")
     assignments = relationship("WorkflowAssignment", back_populates="workflow", cascade="all, delete-orphan")
     
@@ -377,6 +378,17 @@ class Agent(Base):
     assigned_workflows = relationship("WorkflowAssignment", back_populates="assigned_by_agent", foreign_keys="WorkflowAssignment.assigned_by")
     performance_records = relationship("AgentPerformance", back_populates="agent")
     
+    # Agent Integration relationships
+    contexts = relationship("AgentContext", back_populates="agent")
+    created_stories = relationship("Story", foreign_keys="Story.created_by_agent_id")
+    assigned_stories = relationship("Story", foreign_keys="Story.assigned_to_agent_id")
+    technical_requirements = relationship("TechnicalRequirement", foreign_keys="TechnicalRequirement.analyzed_by_agent_id")
+    effort_estimates = relationship("EffortEstimate", foreign_keys="EffortEstimate.estimated_by_agent_id")
+    implementation_plans_created = relationship("ImplementationPlan", foreign_keys="ImplementationPlan.created_by_agent_id")
+    implementation_plans_reviewed = relationship("ImplementationPlan", foreign_keys="ImplementationPlan.reviewed_by_agent_id")
+    interactions_sent = relationship("AgentInteraction", foreign_keys="AgentInteraction.from_agent_id")
+    interactions_received = relationship("AgentInteraction", foreign_keys="AgentInteraction.to_agent_id")
+    
     def __repr__(self):
         return f"<Agent(id={self.id}, name='{self.name}', type='{self.agent_type.name if self.agent_type else 'Unknown'}')>"
 
@@ -495,3 +507,414 @@ class AgentPerformance(Base):
     
     def __repr__(self):
         return f"<AgentPerformance(agent='{self.agent.name if self.agent else 'Unknown'}', workflow='{self.workflow.name if self.workflow else 'Unknown'}', quality={self.quality_score})>"
+
+
+# =============================================================================
+# ORGANIZATIONAL CONTEXT & WORKFLOW ORCHESTRATION MODELS
+# =============================================================================
+
+class OrganizationalContext(Base):
+    """
+    Stores organizational knowledge, standards, and business context
+    This is the institutional memory that agents need before starting projects
+    """
+    __tablename__ = "organizational_contexts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    context_category = Column(String(100), nullable=False, index=True)  # 'business_domain', 'tech_standards', 'processes', 'principles'
+    context_name = Column(String(255), nullable=False, index=True)  # Specific context name
+    description = Column(Text)
+    content = Column(JSON, nullable=False)  # Rich context content
+    applicable_agent_types = Column(JSON)  # List of agent types this applies to
+    scope = Column(String(50), default="global", index=True)  # 'global', 'department', 'project_type'
+    scope_filter = Column(JSON)  # Filtering criteria for scoped contexts
+    priority = Column(Integer, default=5, index=True)  # Context importance
+    is_active = Column(Boolean, default=True, index=True)
+    version = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String(255))  # User who created this context
+    tags = Column(JSON)  # Searchable tags
+    
+    def __repr__(self):
+        return f"<OrganizationalContext(category='{self.context_category}', name='{self.context_name}')>"
+
+
+class WorkflowStep(Base):
+    """
+    Individual steps within agent workflows
+    Defines what each step does, which AI model to use, decision points, etc.
+    """
+    __tablename__ = "workflow_steps"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    step_id = Column(String(100), nullable=False, index=True)  # Unique identifier within workflow
+    step_name = Column(String(255), nullable=False)
+    description = Column(Text)
+    step_type = Column(String(50), nullable=False, index=True)  # 'ai_analysis', 'human_input', 'decision', 'action', 'handoff'
+    order_index = Column(Integer, nullable=False, index=True)  # Execution order
+    
+    # AI Configuration
+    ai_model = Column(String(100))  # Which AI model to use (gpt-4o-mini, etc.)
+    ai_prompt_template = Column(Text)  # Prompt template for AI steps
+    ai_parameters = Column(JSON)  # AI-specific parameters
+    
+    # Decision Logic
+    conditions = Column(JSON)  # Conditions for executing this step
+    decision_criteria = Column(JSON)  # Criteria for decision steps
+    next_step_mapping = Column(JSON)  # Maps outcomes to next steps
+    
+    # Human Interaction
+    requires_human_input = Column(Boolean, default=False)
+    clarification_prompt = Column(Text)  # What to ask humans
+    escalation_rules = Column(JSON)  # When and to whom to escalate
+    timeout_minutes = Column(Integer)  # How long to wait for human input
+    
+    # External Integration
+    external_actions = Column(JSON)  # Jira, Slack, etc. integrations
+    output_format = Column(JSON)  # Expected output format
+    validation_rules = Column(JSON)  # Output validation criteria
+    
+    # Metadata
+    estimated_duration_minutes = Column(Integer)
+    success_criteria = Column(JSON)
+    failure_handling = Column(JSON)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    workflow = relationship("Workflow", back_populates="steps")
+    
+    # Constraints
+    __table_args__ = (UniqueConstraint("workflow_id", "step_id", name="unique_workflow_step"),)
+    
+    def __repr__(self):
+        return f"<WorkflowStep(workflow='{self.workflow.name if self.workflow else 'Unknown'}', step='{self.step_name}')>"
+
+
+class AgentSession(Base):
+    """
+    Tracks active agent workflow sessions
+    Stores session state, current step, and progress
+    """
+    __tablename__ = "agent_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(255), unique=True, nullable=False, index=True)
+    agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    project_context = Column(JSON)  # Project-specific context and parameters
+    
+    # Session State
+    current_step_id = Column(String(100), index=True)  # Current workflow step
+    session_status = Column(String(50), default="active", index=True)  # active, paused, completed, error, cancelled
+    progress_data = Column(JSON)  # Step-by-step progress tracking
+    session_variables = Column(JSON)  # Variables accumulated during session
+    
+    # External References
+    external_project_id = Column(String(100), index=True)  # Jira project key
+    external_thread_id = Column(String(100), index=True)  # Slack thread or conversation ID
+    
+    # Timing
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    expires_at = Column(DateTime(timezone=True))
+    
+    # Relationships
+    agent = relationship("Agent")
+    workflow = relationship("Workflow")
+    interactions = relationship("AgentSessionInteraction", back_populates="session", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<AgentSession(id='{self.session_id}', agent='{self.agent.name if self.agent else 'Unknown'}', status='{self.session_status}')>"
+
+
+class TeamCoordinationRule(Base):
+    """
+    Rules for how agents coordinate and work together
+    Defines handoffs, dependencies, communication protocols
+    """
+    __tablename__ = "team_coordination_rules"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    rule_name = Column(String(255), nullable=False, index=True)
+    description = Column(Text)
+    rule_type = Column(String(50), nullable=False, index=True)  # 'handoff', 'dependency', 'communication', 'escalation'
+    
+    # Agent Relationships
+    from_agent_type_id = Column(Integer, ForeignKey("agent_types.id"), index=True)
+    to_agent_type_id = Column(Integer, ForeignKey("agent_types.id"), index=True)
+    workflow_context = Column(JSON)  # When this rule applies
+    
+    # Rule Logic
+    trigger_conditions = Column(JSON, nullable=False)  # When this rule activates
+    actions = Column(JSON, nullable=False)  # What actions to take
+    communication_template = Column(Text)  # Message templates
+    priority = Column(Integer, default=5, index=True)
+    
+    # Timing and Constraints
+    timeout_minutes = Column(Integer)
+    retry_attempts = Column(Integer, default=1)
+    failure_handling = Column(JSON)
+    
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    from_agent_type = relationship("AgentType", foreign_keys=[from_agent_type_id])
+    to_agent_type = relationship("AgentType", foreign_keys=[to_agent_type_id])
+    
+    def __repr__(self):
+        return f"<TeamCoordinationRule(name='{self.rule_name}', type='{self.rule_type}')>"
+
+
+class Story(Base):
+    """
+    User stories generated by AgentIan and linked to workflows
+    Bridges between workflow system and external project management (Jira)
+    """
+    __tablename__ = "stories"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    external_id = Column(String(100), index=True)  # Jira issue key or external identifier
+    title = Column(String(500), nullable=False)
+    description = Column(Text)
+    acceptance_criteria = Column(JSON)  # List of acceptance criteria
+    priority = Column(String(20), index=True)  # 'critical', 'high', 'medium', 'low'
+    estimated_points = Column(Integer)  # Story points estimate
+    actual_points = Column(Integer)  # Final story points
+    status = Column(String(50), default="draft", index=True)  # draft, ready, in_progress, review, done, cancelled
+    story_type = Column(String(50), index=True)  # 'feature', 'bug', 'task', 'epic'
+    labels = Column(JSON)  # List of labels/tags
+    created_by_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    assigned_to_agent_id = Column(Integer, ForeignKey("agents.id"), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    
+    # AgentIan specific fields
+    ai_analysis = Column(JSON)  # AI analysis results from AgentIan
+    clarifications = Column(JSON)  # Questions and responses
+    breakdown_context = Column(JSON)  # Story breakdown context and reasoning
+    
+    # Relationships
+    workflow = relationship("Workflow")
+    created_by_agent = relationship("Agent", foreign_keys=[created_by_agent_id])
+    assigned_to_agent = relationship("Agent", foreign_keys=[assigned_to_agent_id])
+    tasks = relationship("StoryTask", back_populates="story", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<Story(id={self.id}, title='{self.title[:50]}...', status='{self.status}')>"
+
+
+class StoryTask(Base):
+    """
+    Individual tasks within user stories
+    Created by AgentIan during story breakdown
+    """
+    __tablename__ = "story_tasks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    story_id = Column(Integer, ForeignKey("stories.id"), nullable=False, index=True)
+    external_id = Column(String(100), index=True)  # Jira subtask key
+    title = Column(String(500), nullable=False)
+    description = Column(Text)
+    task_type = Column(String(50), nullable=False, index=True)  # 'Development', 'Testing', 'Review', 'Design', 'Research'
+    estimated_hours = Column(Numeric(5, 2))  # Decimal hours estimate
+    actual_hours = Column(Numeric(5, 2))  # Actual time spent
+    assigned_agent_id = Column(Integer, ForeignKey("agents.id"), index=True)
+    dependencies = Column(JSON)  # List of dependent task IDs
+    acceptance_criteria = Column(JSON)  # Task-specific acceptance criteria
+    status = Column(String(50), default="todo", index=True)  # todo, in_progress, review, done, blocked
+    priority = Column(Integer, default=5, index=True)  # 1=urgent, 5=normal, 9=low
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    started_at = Column(DateTime(timezone=True))
+    completed_at = Column(DateTime(timezone=True))
+    
+    # Relationships
+    story = relationship("Story", back_populates="tasks")
+    assigned_agent = relationship("Agent")
+    
+    def __repr__(self):
+        return f"<StoryTask(id={self.id}, title='{self.title[:30]}...', type='{self.task_type}')>"
+
+
+class TechnicalRequirement(Base):
+    """
+    Technical requirements extracted and analyzed by AgentPete
+    Links to external tasks (Jira issues) and provides detailed technical context
+    """
+    __tablename__ = "technical_requirements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    external_task_id = Column(String(100), index=True)  # Jira issue key or external reference
+    story_id = Column(Integer, ForeignKey("stories.id"), index=True)  # Link to story if applicable
+    requirement_type = Column(String(50), nullable=False, index=True)  # 'functional', 'non_functional', 'technical', 'infrastructure'
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=False)
+    priority = Column(String(20), index=True)  # 'critical', 'high', 'medium', 'low'
+    complexity = Column(String(20), index=True)  # 'trivial', 'simple', 'moderate', 'complex', 'epic'
+    dependencies = Column(JSON)  # List of dependent requirements or external systems
+    acceptance_criteria = Column(JSON)  # Technical acceptance criteria
+    assumptions = Column(JSON)  # Technical assumptions made
+    risks = Column(JSON)  # Identified risks and mitigation strategies
+    analyzed_by_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # AgentPete specific analysis
+    ai_analysis = Column(JSON)  # Full AI analysis results
+    technical_context = Column(JSON)  # Technical context and environment details
+    
+    # Relationships
+    workflow = relationship("Workflow")
+    story = relationship("Story")
+    analyzed_by_agent = relationship("Agent")
+    estimates = relationship("EffortEstimate", back_populates="requirement")
+    implementation_plans = relationship("ImplementationPlan", back_populates="requirement")
+    
+    def __repr__(self):
+        return f"<TechnicalRequirement(id={self.id}, type='{self.requirement_type}', complexity='{self.complexity}')>"
+
+
+class EffortEstimate(Base):
+    """
+    Effort estimates created by AgentPete for technical requirements
+    Includes detailed breakdown, confidence levels, and risk factors
+    """
+    __tablename__ = "effort_estimates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    requirement_id = Column(Integer, ForeignKey("technical_requirements.id"), nullable=False, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    external_task_id = Column(String(100), index=True)  # Jira issue key
+    story_points = Column(Integer)  # Agile story points
+    estimated_hours = Column(Numeric(6, 2), nullable=False)  # Base estimate in hours
+    complexity_factor = Column(Numeric(3, 2), default=1.0)  # Complexity multiplier
+    risk_buffer_hours = Column(Numeric(5, 2), default=0.0)  # Risk buffer time
+    confidence_level = Column(String(20), nullable=False, index=True)  # 'very_low', 'low', 'medium', 'high', 'very_high'
+    
+    # Detailed breakdown
+    breakdown = Column(JSON)  # Detailed activity breakdown with hours
+    assumptions = Column(JSON)  # Estimation assumptions
+    risks = Column(JSON)  # Identified risks affecting estimate
+    similar_work_references = Column(JSON)  # References to similar previous work
+    
+    # Metadata
+    estimated_by_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    estimation_method = Column(String(50))  # 'ai_analysis', 'historical_data', 'expert_judgment', 'hybrid'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Validation fields
+    actual_hours = Column(Numeric(6, 2))  # Actual hours spent (for learning)
+    accuracy_score = Column(Numeric(3, 2))  # Estimate accuracy (0.00 to 1.00)
+    
+    # Relationships
+    requirement = relationship("TechnicalRequirement", back_populates="estimates")
+    workflow = relationship("Workflow")
+    estimated_by_agent = relationship("Agent")
+    
+    def __repr__(self):
+        return f"<EffortEstimate(id={self.id}, hours={self.estimated_hours}, confidence='{self.confidence_level}')>"
+
+
+class ImplementationPlan(Base):
+    """
+    Detailed implementation plans created by AgentPete
+    Contains architecture decisions, component breakdown, and implementation steps
+    """
+    __tablename__ = "implementation_plans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    requirement_id = Column(Integer, ForeignKey("technical_requirements.id"), nullable=False, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    external_task_id = Column(String(100), index=True)  # Jira issue key
+    
+    # High-level approach
+    architecture_approach = Column(Text)  # Overall architectural approach
+    component_breakdown = Column(JSON)  # List of components/modules to implement
+    file_structure = Column(JSON)  # Expected file and directory changes
+    database_changes = Column(JSON)  # Database schema or data changes
+    api_endpoints = Column(JSON)  # New or modified API endpoints
+    
+    # Technical details
+    tech_stack = Column(JSON)  # Technologies, frameworks, libraries to use
+    implementation_steps = Column(JSON)  # Step-by-step implementation plan
+    testing_approach = Column(JSON)  # Testing strategy and test cases
+    deployment_considerations = Column(JSON)  # Deployment and rollout considerations
+    
+    # Integration details
+    integration_points = Column(JSON)  # External system integration points
+    performance_considerations = Column(JSON)  # Performance optimization notes
+    security_considerations = Column(JSON)  # Security implications and measures
+    
+    # Metadata
+    created_by_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    plan_version = Column(Integer, default=1)  # Plan iteration version
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Review and approval
+    review_status = Column(String(50), default="draft", index=True)  # draft, under_review, approved, rejected
+    reviewed_by_agent_id = Column(Integer, ForeignKey("agents.id"), index=True)
+    review_notes = Column(Text)
+    approved_at = Column(DateTime(timezone=True))
+    
+    # Relationships
+    requirement = relationship("TechnicalRequirement", back_populates="implementation_plans")
+    workflow = relationship("Workflow")
+    created_by_agent = relationship("Agent", foreign_keys=[created_by_agent_id])
+    reviewed_by_agent = relationship("Agent", foreign_keys=[reviewed_by_agent_id])
+    
+    def __repr__(self):
+        return f"<ImplementationPlan(id={self.id}, version={self.plan_version}, status='{self.review_status}')>"
+
+
+class AgentInteraction(Base):
+    """
+    Tracks interactions and communications between agents
+    Used for coordination, clarification requests, and handoffs
+    """
+    __tablename__ = "agent_interactions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False, index=True)
+    from_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False, index=True)
+    to_agent_id = Column(Integer, ForeignKey("agents.id"), nullable=True, index=True)  # Null for broadcast messages
+    interaction_type = Column(String(50), nullable=False, index=True)  # 'clarification', 'handoff', 'review', 'notification', 'error'
+    subject = Column(String(255))  # Interaction subject/title
+    message_data = Column(JSON, nullable=False)  # Message content and context
+    response_data = Column(JSON)  # Response content when applicable
+    priority = Column(Integer, default=5, index=True)  # 1=urgent, 5=normal, 9=low
+    status = Column(String(50), default="pending", index=True)  # pending, in_progress, completed, cancelled, expired
+    
+    # External references
+    external_thread_id = Column(String(100), index=True)  # Slack thread ID or external message ID
+    related_entity_type = Column(String(50))  # 'story', 'task', 'requirement', 'estimate'
+    related_entity_id = Column(Integer)  # ID of related entity
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    responded_at = Column(DateTime(timezone=True))
+    resolved_at = Column(DateTime(timezone=True))
+    expires_at = Column(DateTime(timezone=True))  # Auto-expire for time-sensitive interactions
+    
+    # Metadata
+    context_data = Column(JSON)  # Additional context for the interaction
+    attachments = Column(JSON)  # File attachments or references
+    
+    # Relationships
+    workflow = relationship("Workflow")
+    from_agent = relationship("Agent", foreign_keys=[from_agent_id])
+    to_agent = relationship("Agent", foreign_keys=[to_agent_id])
+    
+    def __repr__(self):
+        to_name = self.to_agent.name if self.to_agent else "All"
+        return f"<AgentInteraction(from='{self.from_agent.name if self.from_agent else 'Unknown'}', to='{to_name}', type='{self.interaction_type}', status='{self.status}')>"

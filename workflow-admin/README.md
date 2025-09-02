@@ -150,10 +150,79 @@ Test Coverage:
 - Conflict resolution system
 - Automatic/manual sync options
 
-### 📋 Phase 5: AgentTeam Integration (Future)
-- Migration from file-based to database-driven configuration
-- Enhanced monitoring and analytics
-- Backward compatibility during transition
+### 🎯 Phase 3: Agent Integration Layer (Planned - Design Complete)
+**STATUS**: Data model and API schemas complete. Ready for implementation.
+
+**Purpose**: Enable AgentIan and AgentPete to integrate with workflow-admin as the organizational intelligence layer. Agent outputs (stories, technical analysis) go to Jira, while organizational context, workflow orchestration, and team coordination are managed here.
+
+#### Core Features Designed:
+- **Organizational Context Management**: Store business domain knowledge, technical standards, processes, and principles that agents load before starting workflows
+- **Workflow Session Orchestration**: Track active agent sessions, coordinate multi-agent workflows, and manage handoffs between agents
+- **Team Coordination Rules**: Define how agents work together, when to hand off work, and communication protocols
+- **Agent Context Loading API**: Allow agents to retrieve relevant organizational context filtered by agent type and project scope
+
+#### Database Model Enhancements (Ready for Migration):
+```sql
+-- New tables for agent integration:
+organizational_contexts      -- Business knowledge, tech standards, principles
+workflow_steps              -- AI-powered workflow step definitions  
+agent_sessions              -- Active workflow session tracking
+team_coordination_rules     -- Agent handoff and collaboration rules
+agent_interactions          -- Communication between agents
+stories                     -- Links to Jira stories (metadata only)
+technical_requirements      -- Links to Jira tasks (metadata only)
+effort_estimates           -- AgentPete analysis results
+implementation_plans       -- AgentPete technical planning
+```
+
+#### API Endpoints Designed (Ready for Implementation):
+```
+# Agent Context Loading
+GET  /api/v1/context/agent/{agent_type}    - Load organizational context
+POST /api/v1/context/refresh               - Refresh context cache
+
+# Workflow Session Management  
+POST /api/v1/workflows/{id}/execute         - Start agent workflow session
+GET  /api/v1/sessions/{session_id}/status   - Check session status
+PUT  /api/v1/sessions/{session_id}/step     - Update current step
+
+# Team Coordination
+POST /api/v1/coordination/trigger           - Trigger coordination rules
+GET  /api/v1/coordination/pending           - Get pending handoffs
+PUT  /api/v1/coordination/{id}/complete     - Complete coordination
+
+# Agent Interactions
+POST /api/v1/interactions                   - Create agent interaction
+GET  /api/v1/interactions/pending           - Get pending interactions
+PUT  /api/v1/interactions/{id}/respond      - Respond to interaction
+```
+
+#### Integration Flow:
+1. **AgentIan Startup**: Loads organizational context (business domain, processes)
+2. **Project Analysis**: Uses context to improve requirements gathering and story creation
+3. **Story Creation**: Creates stories in Jira, logs metadata in workflow-admin
+4. **Agent Handoff**: Triggers coordination rules to assign AgentPete via workflow-admin
+5. **AgentPete Startup**: Loads technical standards and architecture guidelines
+6. **Task Analysis**: Analyzes Jira tasks with organizational context awareness
+7. **Cross-Agent Communication**: Clarification requests managed through workflow-admin
+
+#### Next Implementation Steps:
+1. Database migration scripts for new models
+2. API endpoint implementation with FastAPI
+3. Frontend interfaces for context and coordination management
+4. Agent integration points in AgentIan/AgentPete codebases
+5. Testing with real agent workflows
+
+### 📋 Phase 4: Enhanced Frontend (Future)
+- Visual workflow designer with drag-and-drop interface
+- Organizational context management interface
+- Agent session monitoring and coordination dashboard
+- Real-time agent communication interface
+
+### 📋 Phase 5: Git Synchronization (Future)
+- Cross-device database synchronization
+- Conflict resolution system
+- Automatic/manual sync options
 
 ---
 
