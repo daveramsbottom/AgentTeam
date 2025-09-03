@@ -7,10 +7,12 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { AgentType, agentsApi } from '../api/agents';
+import { Agent, AgentType, agentsApi } from '../api/agents';
 import AgentTypeList from './AgentTypeList';
+import AgentList from './AgentList';
 
 const AgentDashboard: React.FC = () => {
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +26,16 @@ const AgentDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const agentTypesData = await agentsApi.getAgentTypes();
+      const [agentsData, agentTypesData] = await Promise.all([
+        agentsApi.getAgents(),
+        agentsApi.getAgentTypes(),
+      ]);
+      
+      setAgents(agentsData);
       setAgentTypes(agentTypesData);
     } catch (err) {
-      console.error('Error loading agent types:', err);
-      setError('Failed to load agent types. Please check if the backend is running.');
+      console.error('Error loading agent data:', err);
+      setError('Failed to load agent data. Please check if the backend is running.');
     } finally {
       setLoading(false);
     }
@@ -39,7 +46,7 @@ const AgentDashboard: React.FC = () => {
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
         <CircularProgress />
         <Typography variant="body2" sx={{ ml: 2 }}>
-          Loading agent types...
+          Loading agent data...
         </Typography>
       </Box>
     );
@@ -56,19 +63,30 @@ const AgentDashboard: React.FC = () => {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Agent Types
+        Agent Dashboard
       </Typography>
       <Typography variant="body1" color="textSecondary" paragraph>
-        Define role-based agent templates with workflows for team building blocks.
+        Manage and monitor AI agents and their types in the workflow system.
       </Typography>
 
       <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper elevation={1} sx={{ p: 3 }}>
+        {/* Agent Types Section */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={1} sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Available Agent Types ({agentTypes.length})
+              Agent Types ({agentTypes.length})
             </Typography>
             <AgentTypeList agentTypes={agentTypes} />
+          </Paper>
+        </Grid>
+
+        {/* Individual Agents Section */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Individual Agents ({agents.length})
+            </Typography>
+            <AgentList agents={agents} agentTypes={agentTypes} />
           </Paper>
         </Grid>
       </Grid>

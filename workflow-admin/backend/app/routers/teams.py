@@ -23,7 +23,7 @@ def create_team(team: TeamCreate, db: Session = Depends(get_db)):
     return db_team
 
 
-@router.get("/", response_model=PaginatedResponse)
+@router.get("/", response_model=List[Team])
 def get_teams(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -40,15 +40,7 @@ def get_teams(
         query = query.filter(TeamModel.project_id == project_id)
     
     teams = query.offset(skip).limit(limit).all()
-    total = query.count()
-    
-    return PaginatedResponse(
-        items=teams,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        pages=(total + limit - 1) // limit
-    )
+    return [Team.from_orm(team) for team in teams]
 
 
 @router.get("/{team_id}", response_model=Team)

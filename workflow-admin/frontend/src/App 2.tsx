@@ -16,16 +16,10 @@ import {
 import { theme } from './theme'
 import Navigation from './components/Navigation'
 import HealthCheck from './components/HealthCheck'
-import HomePage from './components/HomePage'
-import ProjectDashboard from './components/ProjectDashboard'
-import ProjectDetailsPage from './components/ProjectDetailsPage'
 import AgentDashboard from './components/AgentDashboard'
-import AgentTypeDetailPage from './components/AgentTypeDetailPage'
-import AgentListPage from './components/AgentListPage'
+import ProjectDashboard from './components/ProjectDashboard'
 import TeamDashboard from './components/TeamDashboard'
-import TeamDetailPage from './components/TeamDetailPage'
 import WorkflowDashboard from './components/WorkflowDashboard'
-import WorkflowDetailPage from './components/WorkflowDetailPage'
 
 function App() {
   return (
@@ -68,20 +62,14 @@ function App() {
             {/* Page Content */}
             <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
               <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/projects" element={<ProjectDashboard />} />
-                <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+                <Route path="/" element={<Navigate to="/agents" replace />} />
                 <Route path="/agents" element={<AgentDashboard />} />
-                <Route path="/agents/:id" element={<AgentTypeDetailPage />} />
-                <Route path="/agents-list" element={<AgentListPage />} />
-                <Route path="/agents-list/:id" element={<AgentTypeDetailPage />} />
+                <Route path="/projects" element={<ProjectDashboard />} />
                 <Route path="/teams" element={<TeamDashboard />} />
-                <Route path="/teams/:id" element={<TeamDetailPage />} />
                 <Route path="/workflows" element={<WorkflowDashboard />} />
-                <Route path="/workflows/:id" element={<WorkflowDetailPage />} />
               </Routes>
 
-              {/* System Status Section - Only show on agents page */}
+              {/* System Status Section - Only show on agents page for now */}
               <Routes>
                 <Route path="/agents" element={
                   <Box sx={{ mt: 4 }}>
@@ -92,6 +80,30 @@ function App() {
                   </Box>
                 } />
               </Routes>
+
+              {/* Development Info */}
+              <Paper elevation={1} sx={{ p: 2, mt: 3, bgcolor: 'grey.50' }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Development Stage 2 Status:
+                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                  <Typography component="li" variant="body2">
+                    ✅ React Router navigation system
+                  </Typography>
+                  <Typography component="li" variant="body2">
+                    ✅ Multi-page dashboard with sidebar navigation
+                  </Typography>
+                  <Typography component="li" variant="body2">
+                    ✅ Agents, Projects, Teams, and Workflows views
+                  </Typography>
+                  <Typography component="li" variant="body2">
+                    ✅ Mock data integration for all entities
+                  </Typography>
+                  <Typography component="li" variant="body2">
+                    ⏳ Next: CRUD operations and detailed views
+                  </Typography>
+                </Box>
+              </Paper>
             </Container>
           </Box>
         </Box>

@@ -9,6 +9,97 @@ const api = axios.create({
   },
 });
 
+export interface WorkflowTemplate {
+  id: number;
+  name: string;
+  description?: string;
+  agent_type: string; // Links to AgentType.name
+  version: string;
+  is_active: boolean;
+  is_default: boolean; // Default version for this agent type
+  definition: WorkflowDefinition;
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
+  change_notes?: string;
+}
+
+export interface WorkflowDefinition {
+  workflow_type: 'agent_workflow';
+  agent_type: string;
+  stages: WorkflowStage[];
+  monitoring?: {
+    continuous_monitoring: boolean;
+    check_interval: number;
+    trigger_conditions: string[];
+  };
+  automation_support?: boolean;
+  total_estimated_time: string;
+  success_criteria: string[];
+}
+
+export interface ContextReference {
+  id: string;
+  name: string;
+  type: 'project' | 'team' | 'agent' | 'domain' | 'technical';
+  description: string;
+  content: string;
+  tags?: string[];
+}
+
+export interface StageContextConfig {
+  // Optional: Override the agent's default behavior for this specific stage
+  stage_specific_guidance?: string;
+  
+  // Optional: Which contexts to include/exclude for this decision
+  context_selection?: {
+    include_references?: string[]; // Context IDs to specifically include
+    exclude_references?: string[]; // Context IDs to specifically exclude
+    use_project_context?: boolean; // Default: true
+    use_team_context?: boolean; // Default: true  
+    use_agent_context?: boolean; // Default: true
+  };
+  
+  // Optional: Fine-tune AI behavior for this specific stage
+  ai_tuning?: {
+    temperature?: number;
+    max_tokens?: number;
+    response_format?: 'text' | 'json' | 'markdown';
+    focus_instruction?: string; // "Focus only on security aspects" or "Ignore UI concerns"
+  };
+  
+  // Optional: Examples specific to this stage's decision
+  stage_examples?: {
+    description: string;
+    input_example: any;
+    expected_output: any;
+  }[];
+}
+
+export interface WorkflowStage {
+  name: string;
+  description: string;
+  inputs: string[];
+  outputs: string[];
+  ai_prompts?: string[];
+  integrations?: string[];
+  timeout: number;
+  conditions?: {
+    required?: string[];
+    optional?: string[];
+  };
+  
+  // New hierarchical context system
+  context_config?: StageContextConfig;
+  
+  retry_config?: {
+    max_retries: number;
+    backoff_strategy: 'linear' | 'exponential';
+    retry_conditions: string[];
+  };
+}
+
+// Legacy Workflow interface for backward compatibility
 export interface Workflow {
   id: number;
   name: string;
@@ -23,212 +114,96 @@ export interface Workflow {
   updated_at?: string;
 }
 
+// Mock context references that show the hierarchy
+const mockContextReferences: ContextReference[] = [
+  {
+    id: 'project_ecommerce_tech',
+    name: 'E-commerce Tech Stack',
+    type: 'project',
+    description: 'Technical guidelines specific to our e-commerce platform',
+    content: 'Tech Stack: React 18, Node.js 18, PostgreSQL 14, Redis, Docker. APIs: REST with OpenAPI 3.0. Authentication: JWT with refresh tokens. Payment: Stripe integration required.',
+    tags: ['tech-stack', 'ecommerce', 'architecture']
+  },
+  {
+    id: 'project_ecommerce_business',
+    name: 'E-commerce Business Rules',
+    type: 'project',  
+    description: 'Business logic and rules for e-commerce decisions',
+    content: 'Business Rules: All prices in USD. Tax calculation required for US states. Inventory must be checked before order confirmation. Free shipping over $50. Return window: 30 days.',
+    tags: ['business', 'ecommerce', 'pricing']
+  },
+  {
+    id: 'team_backend_focus',
+    name: 'Backend Team Context',
+    type: 'team',
+    description: 'Backend-specific concerns and priorities',
+    content: 'Focus Areas: API performance, database optimization, security, scalability. Avoid: UI/UX decisions, frontend styling, client-side validation specifics. Prioritize: Server performance, data integrity, security best practices.',
+    tags: ['backend', 'api', 'database', 'security']
+  },
+  {
+    id: 'team_frontend_focus', 
+    name: 'Frontend Team Context',
+    type: 'team',
+    description: 'Frontend-specific concerns and priorities', 
+    content: 'Focus Areas: User experience, responsive design, accessibility, client performance. Avoid: Database schema decisions, server architecture, deployment strategies. Prioritize: Component reusability, user workflows, mobile experience.',
+    tags: ['frontend', 'ui', 'ux', 'accessibility']
+  },
+  {
+    id: 'domain_security_compliance',
+    name: 'Security & Compliance Requirements',
+    type: 'domain',
+    description: 'Security and compliance guidelines that may apply selectively',
+    content: 'Security: All user inputs must be sanitized. PII data encryption at rest. HTTPS only. Password policies: min 8 chars, complexity required. GDPR: User consent tracking, right to deletion. PCI DSS: No card data storage.',
+    tags: ['security', 'compliance', 'gdpr', 'pci']
+  },
+  {
+    id: 'domain_performance_guidelines',
+    name: 'Performance Guidelines',
+    type: 'domain', 
+    description: 'Performance targets and optimization guidance',
+    content: 'Performance Targets: Page load < 2s, API response < 200ms, Database queries < 50ms. Optimization: Image compression, lazy loading, CDN usage, database indexing, caching strategies.',
+    tags: ['performance', 'optimization', 'metrics']
+  }
+];
+
 export const workflowsApi = {
-  getWorkflows: async (): Promise<Workflow[]> => {
-    try {
-      const response = await api.get('/api/v1/workflows/');
-      return response.data.items || response.data || [];
-    } catch (error) {
-      console.warn('Workflows API failed, returning mock data:', error);
-      return [
-        {
-          id: 1,
-          name: 'Product Owner Workflow Template',
-          description: 'Core workflow for AI Product Owner agents (AgentIan pattern)',
-          project_id: 1,
-          assigned_team_id: 1,
-          primary_agent_id: 1,
-          definition: {
-            workflow_type: 'agent_workflow',
-            agent_type: 'product_owner',
-            stages: [
-              {
-                name: 'analyze_goal',
-                description: 'Analyze project goal and assess complexity',
-                inputs: ['project_description', 'stakeholder_input'],
-                outputs: ['complexity_assessment', 'project_type_suggestion'],
-                ai_prompts: ['project_analysis_prompt'],
-                timeout: 30
-              },
-              {
-                name: 'seek_clarification', 
-                description: 'Generate and ask clarification questions via Slack',
-                inputs: ['complexity_assessment'],
-                outputs: ['clarification_responses', 'enhanced_requirements'],
-                integrations: ['slack', 'ai_text_improvement'],
-                timeout: 300
-              },
-              {
-                name: 'break_down_stories',
-                description: 'Break down requirements into user stories',
-                inputs: ['enhanced_requirements'],
-                outputs: ['user_stories_list'],
-                ai_prompts: ['story_breakdown_prompt'],
-                timeout: 60
-              },
-              {
-                name: 'create_stories',
-                description: 'Create formatted user stories in Jira',
-                inputs: ['user_stories_list'],
-                outputs: ['jira_story_ids'],
-                integrations: ['jira', 'atlassian_adf'],
-                timeout: 120
-              },
-              {
-                name: 'assign_tasks',
-                description: 'Assign created stories to appropriate developers',
-                inputs: ['jira_story_ids', 'team_members'],
-                outputs: ['assignment_confirmations'],
-                integrations: ['jira'],
-                timeout: 30
-              }
-            ],
-            total_estimated_time: '8-15 minutes',
-            success_criteria: ['stories_created', 'tasks_assigned', 'stakeholder_approved']
-          },
-          status: 'active',
-          priority: 'high',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          name: 'Developer Workflow Template',
-          description: 'Core workflow for AI Developer agents (AgentPete pattern)',
-          project_id: 1,
-          assigned_team_id: 1,
-          primary_agent_id: 2,
-          definition: {
-            workflow_type: 'agent_workflow',
-            agent_type: 'developer',
-            stages: [
-              {
-                name: 'analyze_task',
-                description: 'Analyze assigned Jira task for technical requirements',
-                inputs: ['jira_task_id', 'task_description'],
-                outputs: ['technical_analysis', 'requirement_extraction'],
-                integrations: ['jira'],
-                timeout: 45
-              },
-              {
-                name: 'extract_requirements',
-                description: 'Extract detailed technical requirements using AI',
-                inputs: ['technical_analysis'],
-                outputs: ['detailed_requirements', 'acceptance_criteria'],
-                ai_prompts: ['requirement_extraction_prompt'],
-                timeout: 60
-              },
-              {
-                name: 'assess_complexity',
-                description: 'Assess technical complexity and identify risks',
-                inputs: ['detailed_requirements'],
-                outputs: ['complexity_score', 'risk_factors'],
-                ai_prompts: ['complexity_assessment_prompt'],
-                timeout: 30
-              },
-              {
-                name: 'estimate_effort',
-                description: 'Provide effort estimation with confidence scoring',
-                inputs: ['complexity_score', 'risk_factors'],
-                outputs: ['effort_estimate', 'confidence_score'],
-                ai_prompts: ['estimation_prompt'],
-                timeout: 30
-              },
-              {
-                name: 'plan_implementation',
-                description: 'Create detailed implementation plan and tech recommendations',
-                inputs: ['effort_estimate', 'detailed_requirements'],
-                outputs: ['implementation_plan', 'tech_stack_recommendations'],
-                ai_prompts: ['implementation_planning_prompt'],
-                timeout: 90
-              },
-              {
-                name: 'update_task',
-                description: 'Update Jira task with analysis results and estimates',
-                inputs: ['implementation_plan', 'effort_estimate'],
-                outputs: ['jira_update_confirmation'],
-                integrations: ['jira'],
-                timeout: 30
-              }
-            ],
-            monitoring: {
-              continuous_monitoring: true,
-              check_interval: 60,
-              trigger_conditions: ['task_assigned_to_agent']
-            },
-            total_estimated_time: '5-8 minutes per task',
-            success_criteria: ['task_analyzed', 'estimates_provided', 'jira_updated']
-          },
-          status: 'active',
-          priority: 'critical',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          name: 'Tester Workflow Template',
-          description: 'Core workflow for AI Testing agents (future AgentSarah)',
-          project_id: 2,
-          assigned_team_id: 2,
-          definition: {
-            workflow_type: 'agent_workflow',
-            agent_type: 'tester',
-            stages: [
-              {
-                name: 'analyze_requirements',
-                description: 'Analyze user stories and acceptance criteria for testing',
-                inputs: ['user_story', 'acceptance_criteria'],
-                outputs: ['test_requirements', 'risk_analysis'],
-                timeout: 45
-              },
-              {
-                name: 'create_test_plan',
-                description: 'Generate comprehensive test plan with coverage analysis',
-                inputs: ['test_requirements'],
-                outputs: ['test_plan', 'coverage_matrix'],
-                ai_prompts: ['test_planning_prompt'],
-                timeout: 60
-              },
-              {
-                name: 'design_test_cases',
-                description: 'Design detailed test cases including automation candidates',
-                inputs: ['test_plan'],
-                outputs: ['test_cases', 'automation_candidates'],
-                ai_prompts: ['test_case_generation_prompt'],
-                timeout: 90
-              },
-              {
-                name: 'track_defects',
-                description: 'Monitor and track defects throughout testing lifecycle',
-                inputs: ['test_execution_results'],
-                outputs: ['defect_reports', 'quality_metrics'],
-                integrations: ['jira', 'test_management_tools'],
-                timeout: 30
-              },
-              {
-                name: 'validate_fixes',
-                description: 'Validate bug fixes and regression testing',
-                inputs: ['fixed_defects'],
-                outputs: ['validation_results', 'regression_test_results'],
-                timeout: 45
-              }
-            ],
-            automation_support: true,
-            total_estimated_time: '4-6 minutes per story',
-            success_criteria: ['test_plan_created', 'test_cases_designed', 'quality_validated']
-          },
-          status: 'draft',
-          priority: 'medium',
-          created_at: new Date().toISOString(),
-        },
-      ];
+  getContextReferences: async (): Promise<ContextReference[]> => {
+    return mockContextReferences;
+  },
+
+  // Workflow Templates API
+  getWorkflowTemplates: async (): Promise<WorkflowTemplate[]> => {
+    const response = await api.get('/api/v1/workflow-templates/');
+    return response.data.items || response.data || [];
+  },
+
+  getWorkflowTemplate: async (id: number): Promise<WorkflowTemplate> => {
+    const templates = await workflowsApi.getWorkflowTemplates();
+    const template = templates.find(t => t.id === id);
+    if (!template) {
+      throw new Error(`Workflow template ${id} not found`);
     }
+    return template;
+  },
+
+  getWorkflowsByAgentType: async (agentType: string): Promise<WorkflowTemplate[]> => {
+    const templates = await workflowsApi.getWorkflowTemplates();
+    return templates.filter(t => t.agent_type === agentType).sort((a, b) => {
+      // Sort by default first, then by version descending
+      if (a.is_default && !b.is_default) return -1;
+      if (!a.is_default && b.is_default) return 1;
+      return b.version.localeCompare(a.version);
+    });
+  },
+
+  // Legacy workflow API
+  getWorkflows: async (): Promise<Workflow[]> => {
+    const response = await api.get('/api/v1/workflows/');
+    return response.data.items || response.data || [];
   },
 
   getWorkflow: async (id: number): Promise<Workflow> => {
-    try {
-      const response = await api.get(`/api/v1/workflows/${id}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to fetch workflow ${id}`);
-    }
+    const response = await api.get(`/api/v1/workflows/${id}`);
+    return response.data;
   },
 };

@@ -2,7 +2,10 @@ import pytest
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.database.models import Base, Project, Workflow, WorkflowRun, WorkflowTemplate
+from fastapi.testclient import TestClient
+from app.database.models import Base, Project, Workflow, WorkflowRun, WorkflowTemplate, Agent, AgentType, Team, TeamMember
+from app.main import app
+from app.database.database import get_db
 
 
 @pytest.fixture(scope="session")
@@ -75,3 +78,89 @@ def sample_workflow(test_session, sample_project):
     test_session.commit()
     test_session.refresh(workflow)
     return workflow
+
+
+@pytest.fixture
+def test_client(test_session):
+    """Create FastAPI test client with test database"""
+    def get_test_db():
+        try:
+            yield test_session
+        finally:
+            pass
+    
+    app.dependency_overrides[get_db] = get_test_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_agent_type(test_session):
+    """Create sample agent type for testing"""
+    agent_type = AgentType(
+        name="Test Agent Type",
+        description="A test agent type for API testing",
+        capabilities={
+            "skills": ["testing", "automation"],
+            "tools": ["pytest", "fastapi"],
+            "languages": ["Python"]
+        },
+        workflow_preferences={
+            "communication_style": "technical",
+            "work_hours": "flexible"
+        },
+        default_config={
+            "max_concurrent_tasks": 3,
+            "response_timeout": 30
+        }
+    )
+    test_session.add(agent_type)
+    test_session.commit()
+    test_session.refresh(agent_type)
+    return agent_type
+
+
+@pytest.fixture  
+def sample_agent(test_session, sample_agent_type):
+    """Create sample agent for testing"""
+    agent = Agent(
+        name="TestAgent",
+        agent_type_id=sample_agent_type.id,
+        description="A test agent for API testing",
+        configuration={
+            "test_mode": True,
+            "environment": "testing"
+        },
+        status="active",
+        workload_capacity=100,
+        current_workload=50,
+        specializations={
+            "domains": ["testing", "api_development"],
+            "technologies": ["python", "fastapi"]
+        }
+    )
+    test_session.add(agent)
+    test_session.commit()
+    test_session.refresh(agent)
+    return agent
+
+
+@pytest.fixture
+def sample_team(test_session, sample_project, sample_agent):
+    """Create sample team for testing"""
+    team = Team(
+        name="Test Team",
+        description="A test team for API testing",
+        project_id=sample_project.id,
+        team_lead_id=sample_agent.id,
+        configuration={
+            "team_type": "development",
+            "methodology": "agile",
+            "meeting_schedule": {"daily_standup": "9:00 UTC"}
+        }
+    )
+    test_session.add(team)
+    test_session.commit()
+    test_session.refresh(team)
+    return team

@@ -89,6 +89,17 @@ async def database_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database status check failed: {str(e)}")
 
+# Version endpoint
+@app.get("/api/v1/version")
+async def get_version():
+    """Get application version information"""
+    from datetime import datetime
+    return {
+        "version": "1.0.0",
+        "buildDate": datetime.now().strftime("%Y-%m-%d"),
+        "service": "workflow-admin-api"
+    }
+
 # Root endpoint
 @app.get("/")
 async def root():
