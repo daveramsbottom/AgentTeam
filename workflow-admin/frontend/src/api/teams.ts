@@ -65,7 +65,34 @@ export interface Team {
   completion_percentage?: number;
 }
 
+export interface CreateTeamRequest {
+  name: string;
+  description?: string;
+  project_id: number;
+  team_lead_id?: number;
+  member_agent_ids?: number[];
+  configuration?: any;
+}
+
+export interface UpdateTeamRequest {
+  name: string;
+  description?: string;
+  team_lead_id?: number;
+  member_agent_ids?: number[];
+  configuration?: any;
+}
+
 export const teamsApi = {
+  createTeam: async (teamData: CreateTeamRequest): Promise<Team> => {
+    const response = await api.post('/api/v1/teams/', teamData);
+    return response.data;
+  },
+
+  updateTeam: async (id: number, teamData: UpdateTeamRequest): Promise<Team> => {
+    const response = await api.put(`/api/v1/teams/${id}`, teamData);
+    return response.data;
+  },
+
   getTeams: async (): Promise<Team[]> => {
     const response = await api.get('/api/v1/teams/');
     const teams = response.data || [];
