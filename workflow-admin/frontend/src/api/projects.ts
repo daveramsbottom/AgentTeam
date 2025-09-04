@@ -76,6 +76,7 @@ export interface CreateProjectRequest {
   description?: string;
   context?: string;
   settings?: any;
+  selected_contexts?: number[];
 }
 
 export const projectsApi = {

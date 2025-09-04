@@ -68,7 +68,7 @@ const TeamManager: React.FC<TeamManagementProps> = ({
       const getAgentById = (agentId: number) => agents.find(agent => agent.id === agentId);
       
       const teamSummaries = filteredTeams.map(team => {
-        const leadAgent = team.lead_agent_id ? getAgentById(team.lead_agent_id) : undefined;
+        const leadAgent = team.team_lead_id ? getAgentById(team.team_lead_id) : undefined;
         
         return {
           id: team.id,
@@ -81,7 +81,7 @@ const TeamManager: React.FC<TeamManagementProps> = ({
             return {
               id: agentId,
               name: agent?.name || `Agent ${agentId}`,
-              role: agentId === team.lead_agent_id ? 'Team Lead' : 'Team Member',
+              role: agentId === team.team_lead_id ? 'Team Lead' : 'Team Member',
               status: (agent?.status as 'active' | 'idle' | 'busy') || 'active',
               specialization: agent?.description || 'Multi-agent system development',
               workflow_version: 'v1.0.0',

@@ -10,7 +10,7 @@ import uvicorn
 
 from .database.database import get_db, get_database_info, check_database_connection
 from .database.models import Base
-from .routers import projects, agents, teams, workflows
+from .routers import projects, agents, teams, workflows, contexts
 
 # Create FastAPI app
 app = FastAPI(
@@ -35,6 +35,7 @@ app.include_router(projects.router)
 app.include_router(agents.router)
 app.include_router(teams.router)
 app.include_router(workflows.router)
+app.include_router(contexts.router)
 
 # Health check endpoint
 @app.get("/health")

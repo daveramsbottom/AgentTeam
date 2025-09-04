@@ -26,6 +26,8 @@ import TeamDashboard from './components/TeamDashboard'
 import TeamDetailPage from './components/TeamDetailPage'
 import WorkflowDashboard from './components/WorkflowDashboard'
 import WorkflowDetailPage from './components/WorkflowDetailPage'
+import ContextDashboard from './components/ContextDashboard'
+import ContextCategoryPage from './components/ContextCategoryPage'
 
 function App() {
   return (
@@ -79,6 +81,8 @@ function App() {
                 <Route path="/teams/:id" element={<TeamDetailPage />} />
                 <Route path="/workflows" element={<WorkflowDashboard />} />
                 <Route path="/workflows/:id" element={<WorkflowDetailPage />} />
+                <Route path="/contexts" element={<ContextDashboard />} />
+                <Route path="/contexts/:category" element={<ContextCategoryPage />} />
               </Routes>
 
               {/* System Status Section - Only show on agents page */}

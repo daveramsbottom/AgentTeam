@@ -4,6 +4,7 @@ Agent-related schemas
 
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 from enum import Enum
 from .base import TimestampMixin
 
@@ -75,7 +76,7 @@ class AgentUpdate(BaseModel):
 class Agent(AgentBase, TimestampMixin):
     id: int
     performance_metrics: Optional[Dict[str, Any]] = None
-    last_active: Optional[str] = None  # ISO timestamp string
+    last_active: Optional[datetime] = None
 
     class Config:
         from_attributes = True

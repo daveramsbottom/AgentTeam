@@ -24,6 +24,11 @@ import {
   InputLabel,
   Select,
   Stack,
+  FormControlLabel,
+  Checkbox,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Folder as ProjectIcon,
@@ -31,8 +36,10 @@ import {
   Settings as SettingsIcon,
   MoreVert as MoreVertIcon,
   Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import { Project, CreateProjectRequest, projectsApi } from '../api/projects';
+import { contextsApi, GroupedContexts, OrganizationalContext } from '../api/contexts';
 
 interface CreateProjectFormData {
   name: string;
@@ -43,6 +50,7 @@ interface CreateProjectFormData {
     tech_stack: string[];
     timeline: string;
   };
+  selected_contexts: number[]; // Array of context IDs
 }
 
 const ProjectDashboard: React.FC = () => {
@@ -50,6 +58,11 @@ const ProjectDashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Contexts state
+  const [availableContexts, setAvailableContexts] = useState<GroupedContexts>({});
+  const [contextsLoading, setContextsLoading] = useState(false);
+  const [contextLookup, setContextLookup] = useState<Map<number, OrganizationalContext>>(new Map());
   
   // Action menu state
   const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -65,12 +78,14 @@ const ProjectDashboard: React.FC = () => {
       tech_stack: [],
       timeline: '',
     },
+    selected_contexts: [],
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     loadData();
+    loadContexts(); // Load contexts for project display
   }, []);
 
   const loadData = async () => {
@@ -87,6 +102,26 @@ const ProjectDashboard: React.FC = () => {
     }
   };
 
+  const loadContexts = async () => {
+    try {
+      setContextsLoading(true);
+      const contextsData = await contextsApi.getSelectableProjectContexts();
+      setAvailableContexts(contextsData);
+      
+      // Create lookup map for easy access
+      const lookup = new Map<number, OrganizationalContext>();
+      Object.values(contextsData).flat().forEach(context => {
+        lookup.set(context.id, context);
+      });
+      setContextLookup(lookup);
+    } catch (err) {
+      console.error('Error loading contexts:', err);
+      // Don't set error state as contexts are not critical
+    } finally {
+      setContextsLoading(false);
+    }
+  };
+
   // Action menu handlers
   const handleActionMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setActionMenuAnchor(event.currentTarget);
@@ -99,6 +134,7 @@ const ProjectDashboard: React.FC = () => {
   const handleCreateProject = () => {
     setCreateModalOpen(true);
     handleActionMenuClose();
+    loadContexts(); // Load contexts when modal opens
   };
 
   const handleConfigure = () => {
@@ -119,6 +155,7 @@ const ProjectDashboard: React.FC = () => {
         tech_stack: [],
         timeline: '',
       },
+      selected_contexts: [],
     });
     setFormErrors({});
   };
@@ -148,6 +185,15 @@ const ProjectDashboard: React.FC = () => {
         return newErrors;
       });
     }
+  };
+
+  const handleContextToggle = (contextId: number, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      selected_contexts: checked 
+        ? [...prev.selected_contexts, contextId]
+        : prev.selected_contexts.filter(id => id !== contextId)
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -191,6 +237,7 @@ const ProjectDashboard: React.FC = () => {
           tech_stack: formData.settings.tech_stack,
           timeline: formData.settings.timeline,
         },
+        selected_contexts: formData.selected_contexts,
       });
       
       // Add the new project to the list
@@ -364,6 +411,43 @@ const ProjectDashboard: React.FC = () => {
                               <strong>Context:</strong> {project.context}
                             </Typography>
                           )}
+
+                          {/* Selected Organizational Contexts */}
+                          {project.settings?.selected_contexts && project.settings.selected_contexts.length > 0 && (
+                            <Box mb={2}>
+                              <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>
+                                <strong>Applied Guidelines:</strong>
+                              </Typography>
+                              <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                {project.settings.selected_contexts.map((contextId: number) => {
+                                  const context = contextLookup.get(contextId);
+                                  return context ? (
+                                    <Chip
+                                      key={contextId}
+                                      label={context.name}
+                                      size="small"
+                                      variant="outlined"
+                                      color="secondary"
+                                      sx={{ 
+                                        fontSize: '0.75rem',
+                                        height: '24px',
+                                        backgroundColor: 'rgba(156, 39, 176, 0.04)'
+                                      }}
+                                    />
+                                  ) : (
+                                    <Chip
+                                      key={contextId}
+                                      label={`Context ${contextId}`}
+                                      size="small"
+                                      variant="outlined"
+                                      color="default"
+                                      sx={{ fontSize: '0.75rem', height: '24px' }}
+                                    />
+                                  );
+                                })}
+                              </Box>
+                            </Box>
+                          )}
                           
                           <Box display="flex" gap={1} mb={2}>
                             {project.priority && (
@@ -490,6 +574,63 @@ const ProjectDashboard: React.FC = () => {
                 )}
                 helperText="Enter technologies separated by commas (e.g., React, Node.js, PostgreSQL)"
               />
+
+              {/* Organizational Contexts Selection */}
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Organizational Contexts
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Select applicable contexts for this project. These provide guidelines and standards that will be used during project execution.
+                </Typography>
+                
+                {contextsLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" py={2}>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    <Typography variant="body2">Loading contexts...</Typography>
+                  </Box>
+                ) : (
+                  Object.entries(availableContexts).map(([category, contexts]) => (
+                    <Accordion key={category} sx={{ mb: 1 }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="subtitle1" sx={{ textTransform: 'capitalize' }}>
+                          {category.replace('_', ' ')} ({contexts.length})
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={1}>
+                          {contexts.map((context) => (
+                            <FormControlLabel
+                              key={context.id}
+                              control={
+                                <Checkbox
+                                  checked={formData.selected_contexts.includes(context.id)}
+                                  onChange={(e) => handleContextToggle(context.id, e.target.checked)}
+                                />
+                              }
+                              label={
+                                <Box>
+                                  <Typography variant="body2" fontWeight="medium">
+                                    {context.name}
+                                  </Typography>
+                                  <Typography variant="caption" color="textSecondary">
+                                    {context.description}
+                                  </Typography>
+                                  {context.content_summary && (
+                                    <Typography variant="caption" display="block" color="text.primary" sx={{ mt: 0.5 }}>
+                                      {context.content_summary}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          ))}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  ))
+                )}
+              </Box>
             </Stack>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>

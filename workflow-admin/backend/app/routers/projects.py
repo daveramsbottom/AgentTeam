@@ -16,7 +16,18 @@ router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
 @router.post("/", response_model=Project)
 def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     """Create a new project"""
-    db_project = ProjectModel(**project.dict())
+    project_data = project.dict()
+    
+    # Move selected_contexts to settings if provided
+    selected_contexts = project_data.pop('selected_contexts', [])
+    if project_data.get('settings') is None:
+        project_data['settings'] = {}
+    
+    # Store selected contexts in settings for easy access
+    if selected_contexts:
+        project_data['settings']['selected_contexts'] = selected_contexts
+    
+    db_project = ProjectModel(**project_data)
     db.add(db_project)
     db.commit()
     db.refresh(db_project)

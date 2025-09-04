@@ -24,10 +24,12 @@ import {
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
   FolderOpen as OpenProjectIcon,
+  Description as ContextsIcon,
 } from '@mui/icons-material';
 import { Project, projectsApi } from '../api/projects';
 import { AgentType, Agent, agentsApi } from '../api/agents';
 import { Team, teamsApi } from '../api/teams';
+import { contextsApi } from '../api/contexts';
 
 const drawerWidth = 240;
 
@@ -71,6 +73,9 @@ const Navigation: React.FC = () => {
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
+  const [contextsOpen, setContextsOpen] = useState(false);
+  const [contextCategories, setContextCategories] = useState<string[]>([]);
+  const [loadingContexts, setLoadingContexts] = useState(false);
 
   const toggleProjects = async () => {
     if (!projectsOpen && projects.length === 0 && !loadingProjects) {
@@ -134,6 +139,22 @@ const Navigation: React.FC = () => {
       }
     }
     setAgentsOpen(!agentsOpen);
+  };
+
+  const toggleContexts = async () => {
+    if (!contextsOpen && contextCategories.length === 0 && !loadingContexts) {
+      // Load context categories when first expanding
+      setLoadingContexts(true);
+      try {
+        const categories = await contextsApi.getContextCategories();
+        setContextCategories(categories);
+      } catch (error) {
+        console.error('Error loading context categories:', error);
+      } finally {
+        setLoadingContexts(false);
+      }
+    }
+    setContextsOpen(!contextsOpen);
   };
 
   return (
@@ -473,6 +494,95 @@ const Navigation: React.FC = () => {
                               secondaryTypographyProps={{
                                 variant: 'caption',
                                 sx: { fontSize: '0.6rem' }
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Collapse>
+                  
+                  {/* Contexts dropdown - add after Agents */}
+                  <ListItem disablePadding>
+                    <ListItemButton 
+                      onClick={toggleContexts}
+                      selected={location.pathname.startsWith('/contexts')}
+                      sx={{
+                        '&.Mui-selected': {
+                          backgroundColor: 'primary.light',
+                          color: 'primary.contrastText',
+                          '&:hover': {
+                            backgroundColor: 'primary.main',
+                          },
+                          '& .MuiListItemIcon-root': {
+                            color: 'primary.contrastText',
+                          },
+                        },
+                      }}
+                    >
+                      <ListItemIcon>
+                        <ContextsIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Contexts" />
+                      {loadingContexts ? (
+                        <Box sx={{ width: 16, height: 16, mx: 1 }}>
+                          <Typography variant="caption">...</Typography>
+                        </Box>
+                      ) : (
+                        contextsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                  
+                  <Collapse in={contextsOpen} timeout="auto" unmountOnExit>
+                    <List dense sx={{ pl: 2 }}>
+                      <ListItem disablePadding>
+                        <ListItemButton
+                          component={Link}
+                          to="/contexts"
+                          selected={location.pathname === '/contexts'}
+                          sx={{
+                            '&.Mui-selected': {
+                              backgroundColor: 'primary.light',
+                              color: 'primary.contrastText',
+                            },
+                          }}
+                        >
+                          <ListItemIcon>
+                            <ContextsIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary="All Contexts" 
+                            primaryTypographyProps={{ variant: 'body2' }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                      <Divider sx={{ my: 0.5 }} />
+                      {contextCategories.map((category) => (
+                        <ListItem key={category} disablePadding>
+                          <ListItemButton
+                            component={Link}
+                            to={`/contexts/${category}`}
+                            selected={location.pathname === `/contexts/${category}`}
+                            sx={{
+                              '&.Mui-selected': {
+                                backgroundColor: 'primary.light',
+                                color: 'primary.contrastText',
+                              },
+                            }}
+                          >
+                            <ListItemIcon>
+                              <ContextsIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText 
+                              primary={category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              primaryTypographyProps={{ 
+                                variant: 'body2',
+                                sx: { 
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }
                               }}
                             />
                           </ListItemButton>
