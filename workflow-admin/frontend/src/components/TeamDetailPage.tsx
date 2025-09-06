@@ -36,13 +36,13 @@ import {
   Speed as VelocityIcon,
   Timer as CycleTimeIcon,
   BugReport as DefectIcon,
-  Settings as ConfigIcon,
   AccountTree as WorkflowIcon,
   SmartToy as AgentIcon,
 } from '@mui/icons-material';
 import { Team, teamsApi } from '../api/teams';
 import { Project, projectsApi } from '../api/projects';
 import { AgentType, agentsApi } from '../api/agents';
+import { EditButton } from './common';
 
 const TeamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,8 +50,15 @@ const TeamDetailPage: React.FC = () => {
   const [team, setTeam] = useState<Team | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Helper function to get agent name from ID
+  const getAgentName = (agentId: number) => {
+    const agent = agents.find(a => a.id === agentId);
+    return agent ? agent.name : `Agent ${agentId}`;
+  };
 
   useEffect(() => {
     const loadTeamDetails = async () => {
@@ -80,12 +87,15 @@ const TeamDetailPage: React.FC = () => {
           console.warn('Could not load project:', projectError);
         }
         
-        // Load agent types for context
+        // Load agent types and agents for context
         try {
           const allAgentTypes = await agentsApi.getAgentTypes();
           setAgentTypes(allAgentTypes);
+          
+          const allAgents = await agentsApi.getAgents();
+          setAgents(allAgents);
         } catch (agentError) {
-          console.warn('Could not load agent types:', agentError);
+          console.warn('Could not load agent data:', agentError);
         }
         
       } catch (error) {
@@ -186,11 +196,12 @@ const TeamDetailPage: React.FC = () => {
                     label={`Project: ${project.name}`}
                     size="small"
                     variant="outlined"
+                    color="info"
                     icon={<ProjectIcon />}
                   />
                 )}
                 <Chip
-                  label={`${team.member_agent_ids?.length || 0} members`}
+                  label={`${team.members?.length || 0} members`}
                   size="small"
                   variant="outlined"
                   icon={<MembersIcon />}
@@ -199,13 +210,12 @@ const TeamDetailPage: React.FC = () => {
             </Box>
           </Box>
         </Box>
-        <Button
-          startIcon={<ConfigIcon />}
-          variant="contained"
+        <EditButton
+          onClick={() => {/* TODO: Implement team editing functionality */}}
+          tooltip="Edit Team Configuration"
+          placement="header"
           color="primary"
-        >
-          Configure Team
-        </Button>
+        />
       </Box>
 
       <Grid container spacing={3}>
@@ -428,21 +438,21 @@ const TeamDetailPage: React.FC = () => {
           <Paper elevation={1} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               <MembersIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-              Team Members ({team.member_agent_ids?.length || 0})
+              Team Members ({team.members?.length || 0})
             </Typography>
             
-            {team.member_agent_ids && team.member_agent_ids.length > 0 ? (
+            {team.members && team.members.length > 0 ? (
               <Grid container spacing={2}>
-                {team.member_agent_ids.map((agentId, index) => (
-                  <Grid item xs={12} md={6} key={agentId}>
+                {team.members.map((member) => (
+                  <Grid item xs={12} md={6} key={member.id}>
                     <Card variant="outlined">
                       <CardContent>
                         <Box display="flex" alignItems="center" gap={1} mb={1}>
                           <AgentIcon color="primary" />
                           <Typography variant="subtitle2" fontWeight="medium">
-                            Agent {agentId}
+                            {getAgentName(member.agent_id)}
                           </Typography>
-                          {agentId === team.lead_agent_id && (
+                          {member.role === 'lead' && (
                             <Chip 
                               label="Team Lead" 
                               size="small" 
@@ -462,7 +472,7 @@ const TeamDetailPage: React.FC = () => {
                           <Button
                             size="small"
                             variant="outlined"
-                            onClick={() => navigate(`/agents/${agentId}`)}
+                            onClick={() => navigate(`/agents/${member.agent_id}`)}
                           >
                             View Agent
                           </Button>

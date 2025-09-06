@@ -26,7 +26,13 @@ import {
   Edit as EditIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { contextsApi, OrganizationalContext } from '../api/contexts';
+import { contextsApi, OrganizationalContext, UpdateContextRequest } from '../api/contexts';
+import { EditContextModal } from './contexts';
+import { 
+  getCategoryColor, 
+  getCategoryDisplayName, 
+  updateCategoryColorsFromContexts 
+} from '../utils/categoryColors';
 
 const ContextCategoryPage: React.FC = () => {
   const { category } = useParams<{ category: string }>();
@@ -34,6 +40,9 @@ const ContextCategoryPage: React.FC = () => {
   const [contexts, setContexts] = useState<OrganizationalContext[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingContext, setEditingContext] = useState<OrganizationalContext | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (category) {
@@ -48,6 +57,10 @@ const ContextCategoryPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const contextsData = await contextsApi.getContextsByCategory(category);
+      
+      // Update color cache with any new category colors
+      updateCategoryColorsFromContexts(contextsData);
+      
       setContexts(contextsData);
     } catch (err) {
       console.error('Error loading contexts:', err);
@@ -57,19 +70,7 @@ const ContextCategoryPage: React.FC = () => {
     }
   };
 
-  const getCategoryDisplayName = (category: string) => {
-    return category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      'tech_standards': '#2196F3',
-      'security': '#F44336', 
-      'compliance': '#FF9800',
-      'business_guidelines': '#4CAF50'
-    };
-    return colors[category] || '#757575';
-  };
+  // Using centralized color utility functions
 
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
@@ -79,6 +80,30 @@ const ContextCategoryPage: React.FC = () => {
       'business_guidelines': 'Process guidelines, quality standards, and business rules for project execution'
     };
     return descriptions[category] || 'Organizational context guidelines';
+  };
+
+  const handleEditContext = (context: OrganizationalContext) => {
+    setEditingContext(context);
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateContext = async (id: number, contextData: UpdateContextRequest) => {
+    try {
+      setUpdating(true);
+      setError(null);
+      
+      await contextsApi.updateContext(id, contextData);
+      
+      // Reload contexts to show updated data
+      await loadData();
+      setEditModalOpen(false);
+      setEditingContext(null);
+    } catch (err) {
+      console.error('Error updating context:', err);
+      setError('Failed to update context. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const renderContextContent = (content: any) => {
@@ -183,7 +208,7 @@ const ContextCategoryPage: React.FC = () => {
           Contexts
         </Link>
         <Typography variant="body2" color="text.primary">
-          {getCategoryDisplayName(category)}
+          {getCategoryDisplayName(category, contexts)}
         </Typography>
       </Breadcrumbs>
 
@@ -201,7 +226,7 @@ const ContextCategoryPage: React.FC = () => {
             </Button>
           </Box>
           <Typography variant="h4" gutterBottom sx={{ color: getCategoryColor(category) }}>
-            {getCategoryDisplayName(category)}
+            {getCategoryDisplayName(category, contexts)}
           </Typography>
           <Typography variant="body1" color="textSecondary">
             {getCategoryDescription(category)}
@@ -343,8 +368,7 @@ const ContextCategoryPage: React.FC = () => {
                       startIcon={<EditIcon />}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // TODO: Implement edit context functionality
-                        console.log('Edit context:', context.id);
+                        handleEditContext(context);
                       }}
                       sx={{ 
                         color: getCategoryColor(category),
@@ -386,6 +410,18 @@ const ContextCategoryPage: React.FC = () => {
           ))}
         </Stack>
       )}
+      
+      {/* Edit Context Modal */}
+      <EditContextModal
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingContext(null);
+        }}
+        onSubmit={handleUpdateContext}
+        context={editingContext}
+        loading={updating}
+      />
     </Box>
   );
 };

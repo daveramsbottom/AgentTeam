@@ -8,16 +8,15 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
 } from '@mui/icons-material';
+import { EditButton, SaveCancelButtons } from '../common';
 
 interface ProjectHeaderProps {
   project: any;
   isEditMode: boolean;
   onBack: () => void;
   onToggleEditMode: () => void;
+  onCancelEdit?: () => void;
 }
 
 const ProjectHeader: React.FC<ProjectHeaderProps> = ({
@@ -25,6 +24,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   isEditMode,
   onBack,
   onToggleEditMode,
+  onCancelEdit,
 }) => {
   return (
     <Box display="flex" alignItems="center" gap={2} mb={3}>
@@ -45,15 +45,21 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
           </Typography>
         )}
       </Box>
-      <Tooltip title={isEditMode ? "Save Changes" : "Edit Project"}>
-        <IconButton
+      {isEditMode ? (
+        <SaveCancelButtons
+          onSave={onToggleEditMode}
+          onCancel={onCancelEdit || onToggleEditMode}
+          saveLabel="Save Changes"
+          cancelLabel="Cancel Changes"
+        />
+      ) : (
+        <EditButton
           onClick={onToggleEditMode}
-          color={isEditMode ? "success" : "primary"}
-          size="large"
-        >
-          {isEditMode ? <SaveIcon /> : <EditIcon />}
-        </IconButton>
-      </Tooltip>
+          tooltip="Edit Project"
+          color="primary"
+          placement="header"
+        />
+      )}
     </Box>
   );
 };

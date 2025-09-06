@@ -17,14 +17,23 @@ import {
   Description as ContextIcon,
   Category as CategoryIcon,
   ArrowForward as ArrowForwardIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
-import { contextsApi, GroupedContexts } from '../api/contexts';
+import { CreateCategoryModal } from './contexts';
+import { contextsApi, GroupedContexts, CategoryData } from '../api/contexts';
+import { 
+  getCategoryColor, 
+  getCategoryDisplayName, 
+  initializeCategoryColors 
+} from '../utils/categoryColors';
 
 const ContextDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [groupedContexts, setGroupedContexts] = useState<GroupedContexts>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createCategoryModalOpen, setCreateCategoryModalOpen] = useState(false);
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -34,8 +43,23 @@ const ContextDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const contextsData = await contextsApi.getSelectableProjectContexts();
-      setGroupedContexts(contextsData);
+      // Use regular contexts endpoint and group by category
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/contexts/`);
+      const contexts = await response.json();
+      
+      // Initialize color system with all contexts
+      initializeCategoryColors(contexts);
+      
+      // Group contexts by category
+      const grouped = contexts.reduce((acc: GroupedContexts, context: any) => {
+        if (!acc[context.category]) {
+          acc[context.category] = [];
+        }
+        acc[context.category].push(context);
+        return acc;
+      }, {});
+      
+      setGroupedContexts(grouped);
     } catch (err) {
       console.error('Error loading contexts:', err);
       setError('Failed to load contexts.');
@@ -44,19 +68,7 @@ const ContextDashboard: React.FC = () => {
     }
   };
 
-  const getCategoryDisplayName = (category: string) => {
-    return category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      'tech_standards': '#2196F3',
-      'security': '#F44336', 
-      'compliance': '#FF9800',
-      'business_guidelines': '#4CAF50'
-    };
-    return colors[category] || '#757575';
-  };
+  // Using centralized color utility functions
 
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
@@ -66,6 +78,25 @@ const ContextDashboard: React.FC = () => {
       'business_guidelines': 'Process guidelines, quality standards, and business rules'
     };
     return descriptions[category] || 'Organizational context guidelines';
+  };
+
+  const handleCreateCategory = async (categoryData: CategoryData) => {
+    try {
+      setCreatingCategory(true);
+      setError(null);
+      
+      // Create the category through the API
+      await contextsApi.createCategory(categoryData);
+      
+      // Reload data to show the new category
+      await loadData();
+      setCreateCategoryModalOpen(false);
+    } catch (err) {
+      console.error('Error creating category:', err);
+      setError('Failed to create category. Please try again.');
+    } finally {
+      setCreatingCategory(false);
+    }
   };
 
   if (loading) {
@@ -98,6 +129,22 @@ const ContextDashboard: React.FC = () => {
             Manage organizational guidelines, standards, and contexts used across projects.
           </Typography>
         </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setCreateCategoryModalOpen(true)}
+          sx={{
+            backgroundColor: '#1976d2',
+            color: 'white',
+            boxShadow: 3,
+            '&:hover': {
+              backgroundColor: '#1565c0',
+              boxShadow: 6
+            }
+          }}
+        >
+          Add Category
+        </Button>
       </Box>
 
       {/* Category Overview Cards */}
@@ -122,7 +169,7 @@ const ContextDashboard: React.FC = () => {
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
                   <CategoryIcon sx={{ color: getCategoryColor(category) }} />
                   <Typography variant="h6" fontWeight="medium">
-                    {getCategoryDisplayName(category)}
+                    {getCategoryDisplayName(category, contexts)}
                   </Typography>
                 </Box>
                 
@@ -217,7 +264,7 @@ const ContextDashboard: React.FC = () => {
             <Paper key={category} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="subtitle1" fontWeight="medium" sx={{ color: getCategoryColor(category) }}>
-                  {getCategoryDisplayName(category)}
+                  {getCategoryDisplayName(category, Object.values(groupedContexts).flat())}
                 </Typography>
                 <Button 
                   size="small" 
@@ -248,6 +295,14 @@ const ContextDashboard: React.FC = () => {
           ))}
         </Stack>
       </Box>
+      
+      {/* Create Category Modal */}
+      <CreateCategoryModal
+        open={createCategoryModalOpen}
+        onClose={() => setCreateCategoryModalOpen(false)}
+        onSubmit={handleCreateCategory}
+        loading={creatingCategory}
+      />
     </Box>
   );
 };

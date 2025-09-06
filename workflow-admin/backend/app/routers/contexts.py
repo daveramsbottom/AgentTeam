@@ -19,34 +19,37 @@ router = APIRouter(
 
 class OrganizationalContextResponse(BaseModel):
     id: int
-    context_category: str
-    context_name: str
+    category: str
+    name: str
     description: Optional[str]
     content: dict
-    applicable_agent_types: Optional[List[str]]
-    scope: str
+    applies_to: Optional[List[str]]
     priority: int
     is_active: bool
-    tags: Optional[List[str]]
 
     class Config:
         from_attributes = True
 
 class CreateOrganizationalContextRequest(BaseModel):
-    context_category: str
-    context_name: str
+    category: str
+    name: str
     description: Optional[str] = None
     content: dict
-    applicable_agent_types: Optional[List[str]] = None
-    scope: str = "global"
-    scope_filter: Optional[dict] = None
+    applies_to: Optional[List[str]] = None
     priority: int = 5
-    tags: Optional[List[str]] = None
+
+class UpdateOrganizationalContextRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    content: Optional[dict] = None
+    applies_to: Optional[List[str]] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
 
 @router.get("/categories", response_model=List[str])
 def get_context_categories(db: Session = Depends(get_db)):
     """Get all available context categories"""
-    categories = db.query(OrganizationalContext.context_category).distinct().all()
+    categories = db.query(OrganizationalContext.category).distinct().all()
     return [category[0] for category in categories]
 
 @router.get("/", response_model=List[OrganizationalContextResponse])
@@ -65,12 +68,12 @@ def get_organizational_contexts(
         query = query.filter(OrganizationalContext.is_active == True)
     
     if category:
-        query = query.filter(OrganizationalContext.context_category == category)
+        query = query.filter(OrganizationalContext.category == category)
     
     if scope:
         query = query.filter(OrganizationalContext.scope == scope)
     
-    query = query.order_by(OrganizationalContext.priority.desc(), OrganizationalContext.context_name)
+    query = query.order_by(OrganizationalContext.priority.desc(), OrganizationalContext.name)
     
     contexts = query.offset(skip).limit(limit).all()
     return contexts
@@ -92,28 +95,25 @@ def create_organizational_context(
     # Check for duplicate name within category
     existing = db.query(OrganizationalContext).filter(
         and_(
-            OrganizationalContext.context_category == context_data.context_category,
-            OrganizationalContext.context_name == context_data.context_name
+            OrganizationalContext.category == context_data.category,
+            OrganizationalContext.name == context_data.name
         )
     ).first()
     
     if existing:
         raise HTTPException(
             status_code=400, 
-            detail=f"Context '{context_data.context_name}' already exists in category '{context_data.context_category}'"
+            detail=f"Context '{context_data.name}' already exists in category '{context_data.category}'"
         )
     
     # Create new context
     db_context = OrganizationalContext(
-        context_category=context_data.context_category,
-        context_name=context_data.context_name,
+        category=context_data.category,
+        name=context_data.name,
         description=context_data.description,
         content=context_data.content,
-        applicable_agent_types=context_data.applicable_agent_types or [],
-        scope=context_data.scope,
-        scope_filter=context_data.scope_filter or {},
-        priority=context_data.priority,
-        tags=context_data.tags or []
+        applies_to=context_data.applies_to or [],
+        priority=context_data.priority
     )
     
     db.add(db_context)
@@ -129,25 +129,25 @@ def get_selectable_project_contexts(db: Session = Depends(get_db)):
     
     contexts = db.query(OrganizationalContext).filter(
         and_(
-            OrganizationalContext.context_category.in_(suitable_categories),
+            OrganizationalContext.category.in_(suitable_categories),
             OrganizationalContext.is_active == True
         )
     ).order_by(
-        OrganizationalContext.context_category,
+        OrganizationalContext.category,
         OrganizationalContext.priority.desc(),
-        OrganizationalContext.context_name
+        OrganizationalContext.name
     ).all()
     
     # Group by category for easier UI consumption
     grouped_contexts = {}
     for context in contexts:
-        category = context.context_category
+        category = context.category
         if category not in grouped_contexts:
             grouped_contexts[category] = []
         
         grouped_contexts[category].append({
             'id': context.id,
-            'name': context.context_name,
+            'name': context.name,
             'description': context.description,
             'category': category,
             'content_summary': context.content.get('summary', ''),
@@ -155,3 +155,48 @@ def get_selectable_project_contexts(db: Session = Depends(get_db)):
         })
     
     return grouped_contexts
+
+@router.put("/{context_id}", response_model=OrganizationalContextResponse)
+def update_organizational_context(
+    context_id: int,
+    context_data: UpdateOrganizationalContextRequest,
+    db: Session = Depends(get_db)
+):
+    """Update an organizational context"""
+    context = db.query(OrganizationalContext).filter(OrganizationalContext.id == context_id).first()
+    if not context:
+        raise HTTPException(status_code=404, detail="Context not found")
+    
+    # Update fields that were provided
+    if context_data.name is not None:
+        context.name = context_data.name
+    if context_data.description is not None:
+        context.description = context_data.description
+    if context_data.content is not None:
+        context.content = context_data.content
+    if context_data.applies_to is not None:
+        context.applies_to = context_data.applies_to
+    if context_data.priority is not None:
+        context.priority = context_data.priority
+    if context_data.is_active is not None:
+        context.is_active = context_data.is_active
+    
+    db.commit()
+    db.refresh(context)
+    
+    return context
+
+@router.delete("/{context_id}")
+def delete_organizational_context(
+    context_id: int,
+    db: Session = Depends(get_db)
+):
+    """Delete an organizational context"""
+    context = db.query(OrganizationalContext).filter(OrganizationalContext.id == context_id).first()
+    if not context:
+        raise HTTPException(status_code=404, detail="Context not found")
+    
+    db.delete(context)
+    db.commit()
+    
+    return {"message": "Context deleted successfully"}

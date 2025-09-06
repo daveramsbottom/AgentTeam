@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  EditNote as EditNoteIcon,
+  Description as DocumentIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
 } from '@mui/icons-material';
@@ -28,7 +28,10 @@ const ProjectContextEditor: React.FC<ProjectContextEditorProps> = ({
   return (
     <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-        <Typography variant="h6">Project Context</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <DocumentIcon color="primary" />
+          <Typography variant="h6" color="primary">Project Context</Typography>
+        </Box>
         {isEditMode && !editingContext && (
           <Tooltip title="Edit context">
             <IconButton
@@ -39,7 +42,7 @@ const ProjectContextEditor: React.FC<ProjectContextEditorProps> = ({
                 '&:hover': { backgroundColor: 'primary.light' }
               }}
             >
-              <EditNoteIcon />
+              <DocumentIcon />
             </IconButton>
           </Tooltip>
         )}
@@ -86,8 +89,8 @@ const ProjectContextEditor: React.FC<ProjectContextEditorProps> = ({
             border: '1px solid',
             borderColor: project.context ? 'grey.200' : 'grey.300',
             ...(isEditMode && {
-              backgroundColor: 'warning.light',
-              borderColor: 'warning.main',
+              backgroundColor: '#fff3e0',
+              borderColor: '#ffb74d',
             })
           }}>
             {project.context || 'No project context set. Click the edit icon to add context.'}
